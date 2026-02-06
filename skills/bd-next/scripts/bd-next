@@ -13,6 +13,8 @@ if [[ -z "${next_id:-}" ]]; then
   exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 cat <<PROMPT
 /new Start the next Beads ticket: ${next_id}.
 
@@ -22,9 +24,7 @@ In the new thread:
 3) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets as needed, with appropriate dependencies.
 4) Execute the work, filing any newly-discovered follow-ups as new bd tickets with appropriate dependencies.
 5) Ask the user to verify the completed work meets acceptance criteria.
-6) Commit changes:
-   a) Stage your changes and .beads/: git add <files> .beads/
-   b) Commit: git commit -F <commit_message_file> && rm <commit_message_file>
+6) Commit changes: ${SCRIPT_DIR}/bd-commit <commit_message_file> <files...>
 7) Close the ticket: bd close ${next_id}
-8) Amend to capture pre-commit hook changes and beads state: git add -A && (git diff --cached --quiet || git commit --amend --no-edit)
+8) Amend to capture pre-commit hook changes and beads state: ${SCRIPT_DIR}/bd-amend-hooks
 PROMPT
