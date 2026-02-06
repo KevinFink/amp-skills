@@ -2,6 +2,7 @@
   "amp.permissions": [
     { "tool": "Bash", "matches": { "cmd": "bd *" }, "action": "allow" },
     { "tool": "Bash", "matches": { "cmd": "*bd *" }, "action": "allow" },
+    { "tool": "Bash", "matches": { "cmd": "*/bd-next*" }, "action": "allow" },
     {
       "tool": "Bash",
       "matches": {
