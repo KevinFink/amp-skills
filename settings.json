@@ -62,7 +62,20 @@
           "python3 -c *",
           "python -c *",
           "ruff format*",
-          "ruff check --fix*"
+          "ruff check --fix*",
+          "uv run python -m unittest*",
+          "uv run python -m pytest*",
+          "python -m unittest*",
+          "python -m pytest*",
+          "python3 -m unittest*",
+          "python3 -m pytest*",
+          "pytest*",
+          "npm test*",
+          "pnpm test*",
+          "npx jest*",
+          "cargo test*",
+          "go test*",
+          "make test*"
         ]
       },
       "action": "allow"
