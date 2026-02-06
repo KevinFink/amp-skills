@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+override_id="${1:-}"
+if [[ -n "$override_id" && "$override_id" != "_" && "$override_id" != "-" ]]; then
+  next_id="$override_id"
+else
+  next_id=$(bd ready --json | jq -r '.[0].id')
+fi
+
+if [[ -z "${next_id:-}" ]]; then
+  echo "Could not find next Beads ticket."
+  exit 1
+fi
+
+cat <<PROMPT
+/new Start the next Beads ticket: ${next_id}.
+
+In the new thread:
+1) Run: bd show ${next_id} --json
+2) Restate acceptance criteria / definition of done from the ticket.
+3) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets as needed, with appropriate dependencies.
+4) Execute the work, filing any newly-discovered follow-ups as new bd tickets with appropriate dependencies.
+5) Ask the user to verify the completed work meets acceptance criteria.
+6) Commit changes:
+   a) Stage your changes and .beads/: git add <files> .beads/
+   b) Commit: git commit -F <commit_message_file> && rm <commit_message_file>
+7) Close the ticket: bd close ${next_id}
+8) Amend to capture pre-commit hook changes and beads state: git add -A && (git diff --cached --quiet || git commit --amend --no-edit)
+PROMPT
