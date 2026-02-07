@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-git add -A
-if ! git diff --cached --quiet; then
-  git commit --amend --no-edit
-fi
