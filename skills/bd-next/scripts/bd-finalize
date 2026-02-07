@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 3 ]]; then
+  echo "Usage: bd-finalize <ticket_id> <commit_message_file> <file>..." >&2
+  exit 1
+fi
+
+ticket_id="$1"
+shift
+commit_message_file="$1"
+shift
+
+if [[ ! -f "$commit_message_file" ]]; then
+  echo "Commit message file not found: $commit_message_file" >&2
+  exit 1
+fi
+
+git add "$@" .beads/
+git commit -F "$commit_message_file"
+rm "$commit_message_file"
+
+bd close "$ticket_id"
+
+git add -A
+if ! git diff --cached --quiet; then
+  git commit --amend --no-edit
+fi
+
+bd sync
