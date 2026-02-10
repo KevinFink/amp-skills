@@ -1,11 +1,36 @@
 {
-  "amp.experimental.modes": ["bombadil"],
+  "amp.experimental.modes": [
+    "bombadil"
+  ],
   "amp.permissions": [
-    { "tool": "Bash", "matches": { "cmd": "bd *" }, "action": "allow" },
-    { "tool": "Bash", "matches": { "cmd": "*bd *" }, "action": "allow" },
-    { "tool": "Bash", "matches": { "cmd": "*/bd-next*" }, "action": "allow" },
-    { "tool": "Bash", "matches": { "cmd": "*/bd-commit *" }, "action": "allow" },
-    { "tool": "Bash", "matches": { "cmd": "*/bd-amend-hooks*" }, "action": "allow" },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "bd *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "*bd *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "*/bd-next*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "*/bd-finalize *"
+      },
+      "action": "allow"
+    },
     {
       "tool": "Bash",
       "matches": {
@@ -86,7 +111,12 @@
       },
       "action": "allow"
     },
-    { "tool": "Bash", "action": "ask" }
+    {
+      "tool": "Bash",
+      "action": "ask"
+    }
   ],
-  "amp.cacheDirectory": "~/.cache/amp"
+  "amp.skills.path": "~/amp-skills/skills",
+  "amp.cacheDirectory": "~/.cache/amp",
+  "amp.dangerouslyAllowAll": true
 }
