@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# bd-finalize: Commit work in the current repo, close the ticket in
+# photoop-product, and push both repos.
+#
+# Usage: bd-finalize <ticket_id> <commit_message_file> <file>...
+#
+# Because issue tracking is centralized in photoop-product, this script
+# handles the split: code is committed in the working repo while bd
+# close / bd sync happen in photoop-product.
+
+PRODUCT_DIR="$HOME/photoop-product"
+
 if [[ $# -lt 3 ]]; then
   echo "Usage: bd-finalize <ticket_id> <commit_message_file> <file>..." >&2
   exit 1
@@ -16,15 +27,32 @@ if [[ ! -f "$commit_message_file" ]]; then
   exit 1
 fi
 
-git add "$@" .beads/
+# --- Working repo: commit the code changes ---
+git add "$@"
 git commit -F "$commit_message_file"
 rm "$commit_message_file"
 
-bd close "$ticket_id"
-
+# Amend if pre-commit hooks modified files
 git add -A
 if ! git diff --cached --quiet; then
   git commit --amend --no-edit
 fi
 
-bd sync
+# Push working repo
+git pull --rebase
+git push
+
+# --- photoop-product: close ticket and sync ---
+(
+  cd "$PRODUCT_DIR"
+  bd close "$ticket_id"
+  git add -A
+  if ! git diff --cached --quiet; then
+    git commit -m "Close $ticket_id"
+  fi
+  bd sync
+  git pull --rebase
+  git push
+)
+
+echo "✓ Finalized $ticket_id — both repos pushed."

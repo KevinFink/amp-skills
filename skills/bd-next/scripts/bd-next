@@ -1,17 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# bd-next: Fetch the next ready ticket from photoop-product and output
+# an Amp prompt that starts a new thread for it.
+#
+# All bd commands run against photoop-product (the central tracker).
+# The ticket's label determines which repo to work in.
+
+PRODUCT_DIR="$HOME/photoop-product"
+
 override_id="${1:-}"
+
 if [[ -n "$override_id" && "$override_id" != "_" && "$override_id" != "-" ]]; then
   next_id="$override_id"
 else
-  next_id=$(bd ready --json | jq -r '.[0].id')
+  next_id=$(cd "$PRODUCT_DIR" && bd ready --json | jq -r '.[0].id')
 fi
 
-if [[ -z "${next_id:-}" ]]; then
-  echo "Could not find next Beads ticket."
+if [[ -z "${next_id:-}" || "$next_id" == "null" ]]; then
+  echo "No ready tickets found."
   exit 1
 fi
+
+# Determine the target repo from the ticket's label
+ticket_json=$(cd "$PRODUCT_DIR" && bd show "$next_id" --json)
+label=$(echo "$ticket_json" | jq -r '.[0].labels[0] // empty')
+
+case "$label" in
+  photoop-app)            work_dir="$HOME/photoop-app" ;;
+  photoop-backend)        work_dir="$HOME/photoop-backend" ;;
+  photoop-infrastructure) work_dir="$HOME/photoop-infrastructure" ;;
+  *)                      work_dir="$HOME/photoop-product" ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -19,10 +39,13 @@ cat <<PROMPT
 /new Start the next Beads ticket: ${next_id}.
 
 In the new thread:
-1) Run: bd sync && bd show ${next_id} --json
-2) Restate acceptance criteria / definition of done from the ticket.
-3) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets as needed, with appropriate dependencies.
-4) Execute the work, filing any newly-discovered follow-ups as new bd tickets with appropriate dependencies.
-5) Ask the user to verify the completed work meets acceptance criteria.
-6) Finalize (commit, close, amend, sync): ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+1) cd ${work_dir}
+2) Run (from photoop-product): cd ~/photoop-product && bd sync && bd show ${next_id} --json
+3) Restate and expand (based on the description) the acceptance criteria / definition of done from the ticket.
+4) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets (in ~/photoop-product) as needed, with appropriate dependencies.
+5) cd ${work_dir} and execute the work, filing any newly-discovered follow-ups as new bd tickets (in ~/photoop-product) with appropriate dependencies.
+6) Ask the user to verify the completed work meets acceptance criteria.
+7) Finalize (commit, close, push): ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+
+IMPORTANT: All bd commands (ready, show, close, sync, create, update) MUST be run from ~/photoop-product. Code changes happen in ${work_dir}.
 PROMPT
