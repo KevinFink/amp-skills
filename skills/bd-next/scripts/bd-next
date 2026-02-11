@@ -22,6 +22,9 @@ if [[ -z "${next_id:-}" || "$next_id" == "null" ]]; then
   exit 1
 fi
 
+# Mark the ticket as in-progress so concurrent bd-next calls won't pick it
+(cd "$PRODUCT_DIR" && bd update "$next_id" --status in_progress)
+
 # Determine the target repo from the ticket's label
 ticket_json=$(cd "$PRODUCT_DIR" && bd show "$next_id" --json)
 label=$(echo "$ticket_json" | jq -r '.[0].labels[0] // empty')
