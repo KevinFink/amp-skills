@@ -47,8 +47,14 @@ In the new thread:
 3) Restate and expand (based on the description) the acceptance criteria / definition of done from the ticket.
 4) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets (in ~/photoop-product) as needed, with appropriate dependencies.
 5) cd ${work_dir} and execute the work, filing any newly-discovered follow-ups as new bd tickets (in ~/photoop-product) with appropriate dependencies.
-6) Ask the user to verify the completed work meets acceptance criteria.
-7) Finalize (commit, close, push): ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+6) **STOP — DO NOT PROCEED WITHOUT USER APPROVAL.** Present a summary to the user:
+   - What was done (changes made, files modified)
+   - The commit message you would use
+   - The ticket that will be closed (${next_id})
+   - Which repos will be pushed
+   Ask the user: "Does this look good? May I commit, close the ticket, and push?"
+   WAIT for explicit approval (e.g., "yes", "go ahead", "ship it") before continuing.
+7) ONLY after user approval: Finalize (commit, close, push): ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
 
 IMPORTANT: All bd commands (ready, show, close, sync, create, update) MUST be run from ~/photoop-product. Code changes happen in ${work_dir}.
 PROMPT

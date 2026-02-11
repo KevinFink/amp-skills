@@ -27,6 +27,20 @@ if [[ ! -f "$commit_message_file" ]]; then
   exit 1
 fi
 
+# --- Safety gate: require explicit confirmation ---
+if [[ "${BD_FINALIZE_CONFIRMED:-}" != "yes" ]]; then
+  echo ""
+  echo "=== bd-finalize: Pre-flight summary ==="
+  echo "Ticket:       $ticket_id"
+  echo "Commit msg:   $(cat "$commit_message_file")"
+  echo "Files to add: $@"
+  echo "Actions:      git commit + push (working repo), bd close + push (photoop-product)"
+  echo ""
+  echo "To execute, re-run with BD_FINALIZE_CONFIRMED=yes or set that env var."
+  echo "If called from Amp, the agent MUST ask the user for approval first."
+  exit 0
+fi
+
 # --- Working repo: commit the code changes ---
 git add "$@"
 git commit -F "$commit_message_file"
