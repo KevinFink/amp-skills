@@ -38,23 +38,36 @@ esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Build the label context line
+if [[ "$work_dir" == "$HOME/photoop-product" ]]; then
+  label_line="- This ticket has no repo label, so it is product-level work done in photoop-product itself. Code changes happen in ${work_dir}."
+else
+  label_line="- This ticket is labeled for $(basename "$work_dir"). Code changes happen in ${work_dir}."
+fi
+
+# Build the handoff goal (instructions for the new thread)
+handoff_goal="Continuing work from thread CURRENT_THREAD_URL. When you lack specific information you can use read_thread to get it.
+
+- I want to start working on Beads ticket ${next_id}.
+- All bd CLI commands (ready, show, close, sync, create, update) MUST be run from ~/photoop-product.
+${label_line}
+- Steps to follow:
+  1. cd ${work_dir} and run: bd sync && bd show ${next_id} --json
+  2. Restate and expand the acceptance criteria / definition of done from the ticket.
+  3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ~/photoop-product) with appropriate dependencies.
+  4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ~/photoop-product.
+  5. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
+  6. Only after I approve: finalize using ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+- NEVER run git commit, git push, bd close, or bd-finalize without my explicit approval.
+
+Load skills: bd-next"
+
 cat <<PROMPT
-/new Start the next Beads ticket: ${next_id}.
+Start the next Beads ticket: ${next_id}.
 
-In the new thread:
-1) cd ${work_dir}
-2) Run (from photoop-product): cd ~/photoop-product && bd sync && bd show ${next_id} --json
-3) Restate and expand (based on the description) the acceptance criteria / definition of done from the ticket.
-4) If it makes sense, break the work into steps or sub-tasks, creating new bd tickets (in ~/photoop-product) as needed, with appropriate dependencies.
-5) cd ${work_dir} and execute the work, filing any newly-discovered follow-ups as new bd tickets (in ~/photoop-product) with appropriate dependencies.
-6) **STOP — DO NOT PROCEED WITHOUT USER APPROVAL.** Present a summary to the user:
-   - What was done (changes made, files modified)
-   - The commit message you would use
-   - The ticket that will be closed (${next_id})
-   - Which repos will be pushed
-   Ask the user: "Does this look good? May I commit, close the ticket, and push?"
-   WAIT for explicit approval (e.g., "yes", "go ahead", "ship it") before continuing.
-7) ONLY after user approval: Finalize (commit, close, push): ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+Use the handoff tool to create a new thread with follow: true. Replace CURRENT_THREAD_URL in the goal with the actual Amp Thread URL from this thread's context.
 
-IMPORTANT: All bd commands (ready, show, close, sync, create, update) MUST be run from ~/photoop-product. Code changes happen in ${work_dir}.
+Handoff goal:
+
+${handoff_goal}
 PROMPT

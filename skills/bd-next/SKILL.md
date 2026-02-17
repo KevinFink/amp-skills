@@ -11,6 +11,15 @@ Use this skill when the user wants to start working on the next Beads ticket.
 
 All issue tracking is centralized in **photoop-product**. The `bd` CLI must only be run from `~/photoop-product`. Code changes happen in the repo identified by the ticket's label (`photoop-app`, `photoop-backend`, `photoop-infrastructure`). Tickets without a label are product-level work done in `photoop-product` itself.
 
+## ⚠️ Critical: Always Hand Off to a New Thread
+
+**The agent MUST use the `handoff` tool to start a new thread before doing any implementation work.** The current thread should only:
+1. Select the ticket (run `bd-next` script or identify the ticket ID)
+2. Gather context (ticket details, repo label, working directory)
+3. **Hand off to a new thread** using the `handoff` tool with `follow: true`
+
+The handoff goal should include: the ticket ID, the working repo path, that all bd commands run from `~/photoop-product`, and a summary of the acceptance criteria. This prevents context degradation on longer tasks.
+
 ## Usage
 
 Run the script to get the next ready ticket and instructions:
@@ -23,7 +32,9 @@ Run the script to get the next ready ticket and instructions:
 - If a ticket ID is provided, it uses that specific ticket
 - The ticket's label determines which repo to work in
 
-The script outputs a prompt that instructs Amp to:
+The script outputs a prompt — **use the `handoff` tool** to create a new thread with that prompt as the goal. Do NOT start implementation in the current thread.
+
+In the new thread:
 1. Navigate to the correct working repo (based on ticket label)
 2. Show the ticket details with `bd show <id> --json` (from `~/photoop-product`)
 3. Restate and expand acceptance criteria
