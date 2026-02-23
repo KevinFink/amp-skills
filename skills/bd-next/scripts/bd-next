@@ -56,9 +56,14 @@ ${label_line}
   2. Restate and expand the acceptance criteria / definition of done from the ticket.
   3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ~/photoop-product) with appropriate dependencies.
   4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ~/photoop-product.
-  5. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
-  6. Only after I approve: finalize using ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
-- NEVER run git commit, git push, bd close, or bd-finalize without my explicit approval.
+  5. For photoop-backend tickets that touch Admin UI files: run ~/photoop-infrastructure/scripts/refresh-admin-ui.sh to restart the dev server, then tell me to hard-refresh my browser (Ctrl+Shift+R) and verify the changes before proceeding.
+  6. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
+  7. Only after I approve: finalize by setting these env vars and running bd-finalize:
+     - AMP_THREAD_URLS: space-separated list of all Amp thread URLs (current thread plus any from 'Continuing work from thread ...' in the handoff goal)
+     - BD_CLOSE_NOTES: a one-or-two sentence summary of what was accomplished
+     - BD_FINALIZE_CONFIRMED=yes
+     Then run: ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
+  - NEVER run git commit, git push, bd close, or bd-finalize without my explicit approval.
 
 Load skills: bd-next"
 

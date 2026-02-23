@@ -44,7 +44,6 @@ fi
 # --- Working repo: commit the code changes ---
 git add "$@"
 git commit -F "$commit_message_file"
-rm "$commit_message_file"
 
 # Amend if pre-commit hooks modified files
 git add -A
@@ -52,13 +51,40 @@ if ! git diff --cached --quiet; then
   git commit --amend --no-edit
 fi
 
+# Capture commit info for the completion record
+COMMIT_HASH=$(git rev-parse --short HEAD)
+COMMIT_MSG=$(cat "$commit_message_file" 2>/dev/null || git log -1 --format=%s)
+WORKING_REPO=$(basename "$(git rev-parse --show-toplevel)")
+
+rm -f "$commit_message_file"
+
 # Push working repo
 git pull --rebase
 git push
 
-# --- photoop-product: close ticket and sync ---
+# --- photoop-product: add completion record, close ticket, and sync ---
 (
   cd "$PRODUCT_DIR"
+
+  # Build a structured completion comment
+  comment="## Completion Record"
+  comment+=$'\n\n'"**Commit:** \`${COMMIT_HASH}\` in \`${WORKING_REPO}\`"
+  comment+=$'\n'"**Commit message:** ${COMMIT_MSG}"
+
+  # Add Amp thread URLs if provided (space-separated list via env var)
+  if [[ -n "${AMP_THREAD_URLS:-}" ]]; then
+    comment+=$'\n\n'"**Amp thread(s):**"
+    for url in $AMP_THREAD_URLS; do
+      comment+=$'\n'"- ${url}"
+    done
+  fi
+
+  # Add closing notes if provided via env var
+  if [[ -n "${BD_CLOSE_NOTES:-}" ]]; then
+    comment+=$'\n\n'"**Notes:** ${BD_CLOSE_NOTES}"
+  fi
+
+  bd comments add "$ticket_id" "$comment"
   bd close "$ticket_id"
   git add -A
   if ! git diff --cached --quiet; then

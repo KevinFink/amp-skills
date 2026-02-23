@@ -40,8 +40,37 @@ In the new thread:
 3. Restate and expand acceptance criteria
 4. Execute the work in the working repo
 5. Create follow-up tickets in `~/photoop-product` as needed
-6. **STOP and ask the user for approval** — present a summary of changes, the commit message, and which repos will be pushed. Wait for explicit confirmation before proceeding.
-7. Only after user approval: Finalize with `bd-finalize` (with `BD_FINALIZE_CONFIRMED=yes`) which commits code in the working repo, closes the ticket and syncs in `photoop-product`, and pushes both repos
+6. **For `photoop-backend` tickets that touch Admin UI files:** run `~/photoop-infrastructure/scripts/refresh-admin-ui.sh` to restart the dev server, then tell the user to hard-refresh their browser (`Ctrl+Shift+R`) and verify the changes before proceeding.
+7. **STOP and ask the user for approval** — present a summary of changes, the commit message, and which repos will be pushed. Wait for explicit confirmation before proceeding.
+8. Only after user approval: Finalize with `bd-finalize`, passing env vars to record completion metadata:
+      ```bash
+      AMP_THREAD_URLS="<space-separated Amp thread URLs>" \
+      BD_CLOSE_NOTES="<brief summary of what was done>" \
+      BD_FINALIZE_CONFIRMED=yes \
+        <script_dir>/bd-finalize <ticket_id> <commit_message_file> <files...>
+      ```
+      - `AMP_THREAD_URLS`: Include the current thread URL and any prior thread URLs from handoffs (check the handoff goal for `Continuing work from thread ...` references).
+      - `BD_CLOSE_NOTES`: A one-or-two sentence summary of what was accomplished.
+      - The script automatically captures the commit hash and adds a structured completion comment to the ticket before closing it.
+
+## Testing Changes on Dev
+
+### For photoop-backend Admin UI changes
+After making code changes to the backend, refresh the dev server to ensure changes are visible:
+
+```bash
+cd ~/photoop-infrastructure
+./scripts/refresh-admin-ui.sh
+```
+
+Then hard-refresh your browser (`Ctrl+Shift+R` on Chrome/Firefox, `Cmd+Shift+R` on Safari) to bypass caching.
+
+**Why this is needed:** The dev server uses nginx caching (7-day expiry) for static assets. This script:
+1. Restarts the backend server (picks up code changes)
+2. Reloads nginx (clears in-flight connections)
+3. Verifies the backend is healthy
+
+See `~/photoop-infrastructure/scripts/refresh-admin-ui.sh` for details.
 
 ## ⚠️ Critical: User Approval Required
 
