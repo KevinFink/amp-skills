@@ -49,10 +49,10 @@ fi
 handoff_goal="Continuing work from thread CURRENT_THREAD_URL. When you lack specific information you can use read_thread to get it.
 
 - I want to start working on Beads ticket ${next_id}.
-- All bd CLI commands (ready, show, close, sync, create, update) MUST be run from ~/photoop-product.
+- All bd CLI commands (ready, show, close, create, update) MUST be run from ~/photoop-product.
 ${label_line}
 - Steps to follow:
-  1. cd ${work_dir} and run: bd sync && bd show ${next_id} --json
+  1. cd ${work_dir} and run: bd show ${next_id} --json
   2. Restate and expand the acceptance criteria / definition of done from the ticket.
   3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ~/photoop-product) with appropriate dependencies.
   4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ~/photoop-product.

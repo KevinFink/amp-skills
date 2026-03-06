@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Because issue tracking is centralized in photoop-product, this script
 # handles the split: code is committed in the working repo while bd
-# close / bd sync happen in photoop-product.
+# close / bd dolt push happen in photoop-product.
 
 PRODUCT_DIR="$HOME/photoop-product"
 
@@ -90,7 +90,7 @@ git push
   if ! git diff --cached --quiet; then
     git commit -m "Close $ticket_id"
   fi
-  bd sync
+  bd dolt push
   git pull --rebase
   git push
 )

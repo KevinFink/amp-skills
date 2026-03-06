@@ -42,30 +42,6 @@
 # Use 'bd export --events' to trigger manually regardless of this setting.
 # events-export: false
 
-# Git branch for beads commits (bd sync will commit to this branch)
-# IMPORTANT: Set this for team projects so all clones use the same sync branch.
-# This setting persists across clones (unlike database config which is gitignored).
-# Can also use BEADS_SYNC_BRANCH env var for local override.
-# If not set, bd sync will require you to run 'bd config set sync.branch <branch>'.
-sync-branch: "beads-sync"
-
-daemon.auto-commit: true
-
-daemon.auto-push: true
-
-# Multi-repo configuration (experimental - bd-307)
-# Allows hydrating from multiple repositories and routing writes to the correct JSONL
-# repos:
-#   primary: "."  # Primary repo (where this database lives)
-#   additional:   # Additional repos to hydrate from (read-only)
-#     - ~/beads-planning  # Personal planning repo
-#     - ~/work-planning   # Work planning repo
-
-# Integration settings (access with 'bd config get/set')
-# These are stored in the database, not in this file:
-# - jira.url
-# - jira.project
-# - linear.url
-# - linear.api-key
-# - github.org
-# - github.repo
+# Sync mode: Dolt-native (S3 remote)
+# Use `bd dolt push` / `bd dolt pull` for remote sync.
+# Remote: aws://[photoop-dolt-remotes:photoop-dolt-remotes]/amp-skills
