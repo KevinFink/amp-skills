@@ -41,7 +41,7 @@ In the new thread:
 4. Execute the work in the working repo
 5. Create follow-up tickets in `~/photoop-product` as needed
 6. **For `photoop-backend` tickets that touch Admin UI files:** run `~/photoop-infrastructure/scripts/refresh-admin-ui.sh` to restart the dev server, then tell the user to hard-refresh their browser (`Ctrl+Shift+R`) and verify the changes before proceeding.
-7. **STOP and ask the user for approval** — present a summary of changes, the commit message, and which repos will be pushed. Wait for explicit confirmation before proceeding.
+7. **STOP and ask the user for approval** — present a summary of changes, the commit message, and which repos will be pushed. **You MUST call `notify-slack` with status `needs_attention`** so the user knows you are waiting. Wait for explicit confirmation before proceeding.
 8. Only after user approval: Finalize with `bd-finalize`, passing env vars to record completion metadata:
       ```bash
       AMP_THREAD_URLS="<space-separated Amp thread URLs>" \
