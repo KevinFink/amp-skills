@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# Toolbox tool: notify-slack
+# Sends a Slack notification via incoming webhook.
+# Reads SLACK_WEBHOOK_URL from environment.
+
+ACTION="${TOOLBOX_ACTION:-}"
+
+if [ "$ACTION" = "describe" ]; then
+    cat <<'EOF'
+name: notify-slack
+description: Send a Slack notification. Use when a task is completed, needs user attention, or has errored. Requires SLACK_WEBHOOK_URL env var.
+status: string One of: completed, needs_attention, error
+summary: string A short one-line summary of what happened or what is needed
+EOF
+    exit 0
+fi
+
+# Parse parameters from stdin (key: value format)
+STATUS=""
+SUMMARY=""
+while IFS= read -r line; do
+    case "$line" in
+        status:*) STATUS="${line#status: }" ;;
+        summary:*) SUMMARY="${line#summary: }" ;;
+    esac
+done
+
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+    echo "SLACK_WEBHOOK_URL not set — skipping notification."
+    exit 0
+fi
+
+if [ -z "$STATUS" ] || [ -z "$SUMMARY" ]; then
+    echo "Error: both 'status' and 'summary' parameters are required."
+    exit 1
+fi
+
+# Pick emoji and color based on status
+case "$STATUS" in
+    completed)      EMOJI="✅"; COLOR="#36a64f" ;;
+    needs_attention) EMOJI="🔔"; COLOR="#ff9900" ;;
+    error)          EMOJI="❌"; COLOR="#cc0000" ;;
+    *)              EMOJI="ℹ️"; COLOR="#439FE0" ;;
+esac
+
+THREAD_ID="${AMP_THREAD_ID:-${AGENT_THREAD_ID:-unknown}}"
+THREAD_URL="https://ampcode.com/threads/${THREAD_ID}"
+
+# Build Slack payload
+PAYLOAD=$(cat <<ENDJSON
+{
+  "attachments": [
+    {
+      "color": "${COLOR}",
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "${EMOJI} *Amp Thread ${STATUS//_/ }*\n${SUMMARY}"
+          }
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "<${THREAD_URL}|View Thread>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+ENDJSON
+)
+
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "$SLACK_WEBHOOK_URL")
+
+if [ "$RESPONSE" = "200" ]; then
+    echo "Slack notification sent (${STATUS})."
+else
+    echo "Slack notification failed (HTTP ${RESPONSE})."
+    exit 1
+fi

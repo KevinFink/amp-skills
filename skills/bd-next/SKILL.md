@@ -72,6 +72,13 @@ Then hard-refresh your browser (`Ctrl+Shift+R` on Chrome/Firefox, `Cmd+Shift+R` 
 
 See `~/photoop-infrastructure/scripts/refresh-admin-ui.sh` for details.
 
+## Slack Notifications
+
+**Use the `notify-slack` skill** to keep the user informed. Call the `notify-slack` tool:
+- With status `completed` after finishing the work and pushing (or after presenting the approval summary).
+- With status `needs_attention` when you are blocked and need user input (e.g., approval to commit/push, a design question, ambiguous requirements).
+- With status `error` if something goes wrong that you cannot resolve.
+
 ## ⚠️ Critical: User Approval Required
 
 **NEVER run `git commit`, `git push`, `bd close`, or `bd-finalize` without explicit user approval.** The agent MUST:
