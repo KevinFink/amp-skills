@@ -31,7 +31,7 @@ Run the script to get the next ready ticket and instructions:
 - If no ticket ID is provided, it fetches the first ready ticket from `bd ready --json` (run in `~/photoop-product`)
 - If a ticket ID is provided, it uses that specific ticket
 - The ticket's label determines which repo to work in
-- It automatically runs `bd dolt pull` before selecting/claiming and `bd dolt push` right after claiming (with a direct `dolt push` fallback if needed)
+- It automatically syncs before selecting/claiming (fetch+reset to avoid merge conflicts) and runs `bd dolt push --force` right after claiming (with a direct `dolt push --force` fallback if needed)
 
 The script outputs a prompt — **use the `handoff` tool** to create a new thread with that prompt as the goal. Do NOT start implementation in the current thread.
 
@@ -52,7 +52,7 @@ In the new thread:
       ```
       - `AMP_THREAD_URLS`: Include the current thread URL and any prior thread URLs from handoffs (check the handoff goal for `Continuing work from thread ...` references).
       - `BD_CLOSE_NOTES`: A one-or-two sentence summary of what was accomplished.
-      - The script automatically runs `bd dolt pull` before closing, then `bd dolt push` after closing (with fallback), captures the commit hash, and adds a structured completion comment to the ticket.
+      - The script automatically syncs (fetch+reset) before closing, then runs `bd dolt push --force` after closing (with fallback), captures the commit hash, and adds a structured completion comment to the ticket.
 
 ## Testing Changes on Dev
 

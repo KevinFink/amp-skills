@@ -9,8 +9,9 @@ bd ready              # Find available work
 bd show <id>          # View issue details
 bd update <id> --status in_progress  # Claim work
 bd close <id>         # Complete work
-bd dolt push          # Push issues to S3 remote
-bd dolt pull          # Pull issues from S3 remote
+bd dolt push --force  # Push issues to S3 remote (--force avoids metadata conflicts)
+# To pull: use dolt fetch + reset instead of bd dolt pull (see scripts/dolt-pull-reset.sh)
+# bd dolt pull is broken for multi-machine setups: https://github.com/steveyegge/beads/issues/2466
 ```
 
 ## Landing the Plane (Session Completion)
@@ -25,7 +26,7 @@ bd dolt pull          # Pull issues from S3 remote
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
+   bd dolt push --force
    git push
    git status  # MUST show "up to date with origin"
    ```
@@ -110,7 +111,7 @@ bd close bd-42 --reason "Completed" --json
 bd automatically syncs via Dolt:
 
 - Each write auto-commits to Dolt history
-- Use `bd dolt push`/`bd dolt pull` for remote sync
+- Use `bd dolt push --force` to push; use `dolt fetch + reset` to pull (see scripts/dolt-pull-reset.sh)
 - No manual export/import needed!
 
 ### Important Rules
@@ -137,7 +138,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
+   bd dolt push --force
    git push
    git status  # MUST show "up to date with origin"
    ```

@@ -11,30 +11,35 @@ PRODUCT_DIR="$HOME/photoop-product"
 PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
 
 sync_product_pull() {
+  # Use fetch+reset instead of bd dolt pull to avoid recurring merge
+  # conflicts on the metadata table (dolt_auto_push_commit/last rows).
+  # See: https://github.com/steveyegge/beads/issues/2466
   (
-    cd "$PRODUCT_DIR"
-    if bd dolt pull >/dev/null 2>&1; then
-      return 0
-    fi
+    cd "$PRODUCT_DOLT_DB_DIR"
+    dolt fetch origin >/dev/null 2>&1
 
-    echo "Warning: bd dolt pull failed; restarting Dolt server and retrying..." >&2
-    bd dolt stop >/dev/null 2>&1 || true
-    bd dolt killall >/dev/null 2>&1 || true
-    bd dolt start >/dev/null 2>&1 || true
-    bd dolt pull >/dev/null
+    local local_head remote_head
+    local_head=$(dolt log --oneline -n 1 2>/dev/null | awk '{print $1}')
+    remote_head=$(dolt log --oneline -n 1 origin/main 2>/dev/null | awk '{print $1}')
+
+    if [[ "$local_head" != "$remote_head" ]]; then
+      dolt reset --hard origin/main >/dev/null 2>&1
+    fi
   )
 }
 
 sync_product_push() {
+  # Use --force to avoid merge conflicts on metadata table.
+  # See: https://github.com/steveyegge/beads/issues/2466
   (
     cd "$PRODUCT_DIR"
-    if bd dolt push >/dev/null 2>&1; then
+    if bd dolt push --force >/dev/null 2>&1; then
       return 0
     fi
 
-    echo "Warning: bd dolt push failed; trying direct dolt push fallback..." >&2
+    echo "Warning: bd dolt push --force failed; trying direct dolt push fallback..." >&2
     if command -v dolt >/dev/null 2>&1 && [[ -d "$PRODUCT_DOLT_DB_DIR/.dolt" ]]; then
-      (cd "$PRODUCT_DOLT_DB_DIR" && dolt push origin main >/dev/null)
+      (cd "$PRODUCT_DOLT_DB_DIR" && dolt push --force origin main >/dev/null)
     else
       echo "Error: could not push Beads changes (bd and dolt fallback both unavailable)." >&2
       return 1
