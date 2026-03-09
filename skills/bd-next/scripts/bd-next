@@ -8,8 +8,44 @@ set -euo pipefail
 # The ticket's label determines which repo to work in.
 
 PRODUCT_DIR="$HOME/photoop-product"
+PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+
+sync_product_pull() {
+  (
+    cd "$PRODUCT_DIR"
+    if bd dolt pull >/dev/null 2>&1; then
+      return 0
+    fi
+
+    echo "Warning: bd dolt pull failed; restarting Dolt server and retrying..." >&2
+    bd dolt stop >/dev/null 2>&1 || true
+    bd dolt killall >/dev/null 2>&1 || true
+    bd dolt start >/dev/null 2>&1 || true
+    bd dolt pull >/dev/null
+  )
+}
+
+sync_product_push() {
+  (
+    cd "$PRODUCT_DIR"
+    if bd dolt push >/dev/null 2>&1; then
+      return 0
+    fi
+
+    echo "Warning: bd dolt push failed; trying direct dolt push fallback..." >&2
+    if command -v dolt >/dev/null 2>&1 && [[ -d "$PRODUCT_DOLT_DB_DIR/.dolt" ]]; then
+      (cd "$PRODUCT_DOLT_DB_DIR" && dolt push origin main >/dev/null)
+    else
+      echo "Error: could not push Beads changes (bd and dolt fallback both unavailable)." >&2
+      return 1
+    fi
+  )
+}
 
 override_id="${1:-}"
+
+# Ensure this machine has the latest tracker state before selecting / claiming.
+sync_product_pull
 
 if [[ -n "$override_id" && "$override_id" != "_" && "$override_id" != "-" ]]; then
   next_id="$override_id"
@@ -24,6 +60,9 @@ fi
 
 # Mark the ticket as in-progress so concurrent bd-next calls won't pick it
 (cd "$PRODUCT_DIR" && bd update "$next_id" --status in_progress)
+
+# Immediately push claim state so other machines see the lock-in quickly.
+sync_product_push
 
 # Determine the target repo from the ticket's label
 ticket_json=$(cd "$PRODUCT_DIR" && bd show "$next_id" --json)

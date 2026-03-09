@@ -11,6 +11,39 @@ set -euo pipefail
 # close / bd dolt push happen in photoop-product.
 
 PRODUCT_DIR="$HOME/photoop-product"
+PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+
+sync_product_pull() {
+  (
+    cd "$PRODUCT_DIR"
+    if bd dolt pull >/dev/null 2>&1; then
+      return 0
+    fi
+
+    echo "Warning: bd dolt pull failed; restarting Dolt server and retrying..." >&2
+    bd dolt stop >/dev/null 2>&1 || true
+    bd dolt killall >/dev/null 2>&1 || true
+    bd dolt start >/dev/null 2>&1 || true
+    bd dolt pull >/dev/null
+  )
+}
+
+sync_product_push() {
+  (
+    cd "$PRODUCT_DIR"
+    if bd dolt push >/dev/null 2>&1; then
+      return 0
+    fi
+
+    echo "Warning: bd dolt push failed; trying direct dolt push fallback..." >&2
+    if command -v dolt >/dev/null 2>&1 && [[ -d "$PRODUCT_DOLT_DB_DIR/.dolt" ]]; then
+      (cd "$PRODUCT_DOLT_DB_DIR" && dolt push origin main >/dev/null)
+    else
+      echo "Error: could not push Beads changes (bd and dolt fallback both unavailable)." >&2
+      return 1
+    fi
+  )
+}
 
 if [[ $# -lt 3 ]]; then
   echo "Usage: bd-finalize <ticket_id> <commit_message_file> <file>..." >&2
@@ -63,6 +96,9 @@ git pull --rebase
 git push
 
 # --- photoop-product: add completion record, close ticket, and sync ---
+# Sync tracker first so we close on top of the latest state.
+sync_product_pull
+
 (
   cd "$PRODUCT_DIR"
 
@@ -90,7 +126,12 @@ git push
   if ! git diff --cached --quiet; then
     git commit -m "Close $ticket_id"
   fi
-  bd dolt push
+)
+
+sync_product_push
+
+(
+  cd "$PRODUCT_DIR"
   git pull --rebase
   git push
 )
