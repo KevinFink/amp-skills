@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# bd-finalize: Commit work in the current repo, close the ticket in
-# photoop-product, and push both repos.
+# bd-finalize: Commit work in the current repo, close the ticket,
+# and push.
 #
 # Usage: bd-finalize <ticket_id> <commit_message_file> <file>...
 #
-# Because issue tracking is centralized in photoop-product, this script
-# handles the split: code is committed in the working repo while bd
-# close / bd dolt push happen in photoop-product.
+# The bd close / bd dolt push commands run from the current directory
+# (which should be the repo where beads is initialized).
 
-PRODUCT_DIR="$HOME/photoop-product"
-PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+PRODUCT_DIR="$(pwd)"
+
+# Detect the dolt DB directory by finding where .dolt/ lives under .beads/dolt/
+if [[ -d "$PRODUCT_DIR/.beads/dolt/prod/.dolt" ]]; then
+  PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+elif [[ -d "$PRODUCT_DIR/.beads/dolt/.dolt" ]]; then
+  PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt"
+else
+  echo "Error: could not find dolt database under .beads/dolt/" >&2
+  exit 1
+fi
 
 sync_product_pull() {
   # Use fetch+reset instead of bd dolt pull to avoid recurring merge
@@ -72,7 +80,7 @@ if [[ "${BD_FINALIZE_CONFIRMED:-}" != "yes" ]]; then
   echo "Ticket:       $ticket_id"
   echo "Commit msg:   $(cat "$commit_message_file")"
   echo "Files to add: $@"
-  echo "Actions:      git commit + push (working repo), bd close + push (photoop-product)"
+  echo "Actions:      git commit + push, bd close + push"
   echo ""
   echo "To execute, re-run with BD_FINALIZE_CONFIRMED=yes or set that env var."
   echo "If called from Amp, the agent MUST ask the user for approval first."
@@ -100,45 +108,38 @@ rm -f "$commit_message_file"
 git pull --rebase
 git push
 
-# --- photoop-product: add completion record, close ticket, and sync ---
+# --- Add completion record, close ticket, and sync ---
 # Sync tracker first so we close on top of the latest state.
 sync_product_pull
 
-(
-  cd "$PRODUCT_DIR"
+# Build a structured completion comment
+comment="## Completion Record"
+comment+=$'\n\n'"**Commit:** \`${COMMIT_HASH}\` in \`${WORKING_REPO}\`"
+comment+=$'\n'"**Commit message:** ${COMMIT_MSG}"
 
-  # Build a structured completion comment
-  comment="## Completion Record"
-  comment+=$'\n\n'"**Commit:** \`${COMMIT_HASH}\` in \`${WORKING_REPO}\`"
-  comment+=$'\n'"**Commit message:** ${COMMIT_MSG}"
+# Add Amp thread URLs if provided (space-separated list via env var)
+if [[ -n "${AMP_THREAD_URLS:-}" ]]; then
+  comment+=$'\n\n'"**Amp thread(s):**"
+  for url in $AMP_THREAD_URLS; do
+    comment+=$'\n'"- ${url}"
+  done
+fi
 
-  # Add Amp thread URLs if provided (space-separated list via env var)
-  if [[ -n "${AMP_THREAD_URLS:-}" ]]; then
-    comment+=$'\n\n'"**Amp thread(s):**"
-    for url in $AMP_THREAD_URLS; do
-      comment+=$'\n'"- ${url}"
-    done
-  fi
+# Add closing notes if provided via env var
+if [[ -n "${BD_CLOSE_NOTES:-}" ]]; then
+  comment+=$'\n\n'"**Notes:** ${BD_CLOSE_NOTES}"
+fi
 
-  # Add closing notes if provided via env var
-  if [[ -n "${BD_CLOSE_NOTES:-}" ]]; then
-    comment+=$'\n\n'"**Notes:** ${BD_CLOSE_NOTES}"
-  fi
-
-  bd comments add "$ticket_id" "$comment"
-  bd close "$ticket_id"
-  git add -A
-  if ! git diff --cached --quiet; then
-    git commit -m "Close $ticket_id"
-  fi
-)
+bd comments add "$ticket_id" "$comment"
+bd close "$ticket_id"
+git add -A
+if ! git diff --cached --quiet; then
+  git commit -m "Close $ticket_id"
+fi
 
 sync_product_push
 
-(
-  cd "$PRODUCT_DIR"
-  git pull --rebase
-  git push
-)
+git pull --rebase
+git push
 
-echo "✓ Finalized $ticket_id — both repos pushed."
+echo "✓ Finalized $ticket_id — repo pushed."

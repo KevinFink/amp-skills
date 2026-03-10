@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# bd-next: Fetch the next ready ticket from photoop-product and output
+# bd-next: Fetch the next ready ticket from the current repo and output
 # an Amp prompt that starts a new thread for it.
 #
-# All bd commands run against photoop-product (the central tracker).
-# The ticket's label determines which repo to work in.
+# All bd commands run against the current working directory.
 
-PRODUCT_DIR="$HOME/photoop-product"
-PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+PRODUCT_DIR="$(pwd)"
+
+# Detect the dolt DB directory by finding where .dolt/ lives under .beads/dolt/
+if [[ -d "$PRODUCT_DIR/.beads/dolt/prod/.dolt" ]]; then
+  PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt/prod"
+elif [[ -d "$PRODUCT_DIR/.beads/dolt/.dolt" ]]; then
+  PRODUCT_DOLT_DB_DIR="$PRODUCT_DIR/.beads/dolt"
+else
+  echo "Error: could not find dolt database under .beads/dolt/" >&2
+  exit 1
+fi
 
 sync_product_pull() {
   # Use fetch+reset instead of bd dolt pull to avoid recurring merge
@@ -55,7 +63,7 @@ sync_product_pull
 if [[ -n "$override_id" && "$override_id" != "_" && "$override_id" != "-" ]]; then
   next_id="$override_id"
 else
-  next_id=$(cd "$PRODUCT_DIR" && bd ready --json | jq -r '.[0].id')
+  next_id=$(bd ready --json | jq -r '.[0].id')
 fi
 
 if [[ -z "${next_id:-}" || "$next_id" == "null" ]]; then
@@ -64,45 +72,39 @@ if [[ -z "${next_id:-}" || "$next_id" == "null" ]]; then
 fi
 
 # Mark the ticket as in-progress so concurrent bd-next calls won't pick it
-(cd "$PRODUCT_DIR" && bd update "$next_id" --status in_progress)
+bd update "$next_id" --status in_progress
 
 # Immediately push claim state so other machines see the lock-in quickly.
 sync_product_push
 
 # Determine the target repo from the ticket's label
-ticket_json=$(cd "$PRODUCT_DIR" && bd show "$next_id" --json)
+ticket_json=$(bd show "$next_id" --json)
 label=$(echo "$ticket_json" | jq -r '.[0].labels[0] // empty')
 
-case "$label" in
-  photoop-app)            work_dir="$HOME/photoop-app" ;;
-  photoop-backend)        work_dir="$HOME/photoop-backend" ;;
-  photoop-infrastructure) work_dir="$HOME/photoop-infrastructure" ;;
-  *)                      work_dir="$HOME/photoop-product" ;;
-esac
+work_dir="$PRODUCT_DIR"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Build the label context line
-if [[ "$work_dir" == "$HOME/photoop-product" ]]; then
-  label_line="- This ticket has no repo label, so it is product-level work done in photoop-product itself. Code changes happen in ${work_dir}."
+if [[ -n "$label" ]]; then
+  label_line="- This ticket is labeled \`${label}\`. Code changes happen in ${work_dir}."
 else
-  label_line="- This ticket is labeled for $(basename "$work_dir"). Code changes happen in ${work_dir}."
+  label_line="- This ticket has no repo label. Code changes happen in ${work_dir}."
 fi
 
 # Build the handoff goal (instructions for the new thread)
 handoff_goal="Continuing work from thread CURRENT_THREAD_URL. When you lack specific information you can use read_thread to get it.
 
 - I want to start working on Beads ticket ${next_id}.
-- All bd CLI commands (ready, show, close, create, update) MUST be run from ~/photoop-product.
+- All bd CLI commands (ready, show, close, create, update) MUST be run from ${PRODUCT_DIR}.
 ${label_line}
 - Steps to follow:
-  1. cd ${work_dir} and run: bd show ${next_id} --json
+  1. Run: bd show ${next_id} --json (from ${PRODUCT_DIR})
   2. Restate and expand the acceptance criteria / definition of done from the ticket.
-  3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ~/photoop-product) with appropriate dependencies.
-  4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ~/photoop-product.
-  5. For photoop-backend tickets that touch Admin UI files: run ~/photoop-infrastructure/scripts/refresh-admin-ui.sh to restart the dev server, then tell me to hard-refresh my browser (Ctrl+Shift+R) and verify the changes before proceeding.
-  6. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
-  7. Only after I approve: finalize by setting these env vars and running bd-finalize:
+  3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ${PRODUCT_DIR}) with appropriate dependencies.
+  4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ${PRODUCT_DIR}.
+  5. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
+  6. Only after I approve: finalize by setting these env vars and running bd-finalize:
      - AMP_THREAD_URLS: space-separated list of all Amp thread URLs (current thread plus any from 'Continuing work from thread ...' in the handoff goal)
      - BD_CLOSE_NOTES: a one-or-two sentence summary of what was accomplished
      - BD_FINALIZE_CONFIRMED=yes
