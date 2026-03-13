@@ -52,6 +52,7 @@ In the new thread:
       - `AMP_THREAD_URLS`: Include the current thread URL and any prior thread URLs from handoffs (check the handoff goal for `Continuing work from thread ...` references).
       - `BD_CLOSE_NOTES`: A one-or-two sentence summary of what was accomplished.
       - The script automatically syncs (fetch+reset) before closing, then runs `bd dolt push --force` after closing (with fallback), captures the commit hash, and adds a structured completion comment to the ticket.
+      - To add a comment manually: `bd comments add <ticket_id> "<text>"` (note: `bd comment` is not valid).
 
 ## Slack Notifications
 
