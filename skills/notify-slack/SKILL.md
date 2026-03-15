@@ -17,10 +17,18 @@ You MUST call the `notify-slack` tool in these situations:
 
 ## How to Use
 
-Call the `notify-slack` toolbox tool with these parameters:
+The tool reads parameters from **stdin** in `key: value` format (one per line). Pipe them in using `printf`:
+
+```bash
+printf 'status: completed\nsummary: Your one-line summary here\n' | /home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack
+```
+
+**Parameters:**
 
 - `status`: One of `completed`, `needs_attention`, or `error`
 - `summary`: A short one-line summary of what happened or what you need
+
+**⚠️ Do NOT pass parameters as CLI arguments or flags — they are ignored. Always pipe via stdin.**
 
 The tool reads the Slack webhook URL from the `SLACK_WEBHOOK_URL` environment variable. If the variable is not set, the tool will silently skip sending (no error).
 
