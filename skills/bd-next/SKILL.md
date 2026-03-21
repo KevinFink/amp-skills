@@ -44,15 +44,28 @@ In the new thread:
 6. **STOP and ask the user for approval** — present a summary of changes, the commit message, and which repos will be pushed. **You MUST call `notify-slack` with status `needs_attention`** so the user knows you are waiting. Wait for explicit confirmation before proceeding.
 7. Only after user approval: Finalize with `bd-finalize`, passing env vars to record completion metadata:
       ```bash
-      AMP_THREAD_URLS="<space-separated Amp thread URLs>" \
-      BD_CLOSE_NOTES="<brief summary of what was done>" \
-      BD_FINALIZE_CONFIRMED=yes \
-        <script_dir>/bd-finalize <ticket_id> <commit_message_file> <files...>
-      ```
-      - `AMP_THREAD_URLS`: Include the current thread URL and any prior thread URLs from handoffs (check the handoff goal for `Continuing work from thread ...` references).
-      - `BD_CLOSE_NOTES`: A one-or-two sentence summary of what was accomplished.
-      - The script automatically syncs (fetch+reset) before closing, then runs `bd dolt push --force` after closing (with fallback), captures the commit hash, and adds a structured completion comment to the ticket.
-      - To add a comment manually: `bd comments add <ticket_id> "<text>"` (note: `bd comment` is not valid).
+       AMP_THREAD_URLS="<space-separated Amp thread URLs>" \
+       BD_CLOSE_NOTES="<brief summary of what was done>" \
+       BD_FINALIZE_CONFIRMED=yes \
+         <script_dir>/bd-finalize <ticket_id> <commit_message_file> <files...>
+       ```
+       - `AMP_THREAD_URLS`: Include the current thread URL and any prior thread URLs from handoffs (check the handoff goal for `Continuing work from thread ...` references).
+       - `BD_CLOSE_NOTES`: A one-or-two sentence summary of what was accomplished.
+       - The script automatically syncs (fetch+reset) before closing, then runs `bd dolt push --force` after closing (with fallback), captures the commit hash, and adds a structured completion comment to the ticket.
+       - To add a comment manually: `bd comments add <ticket_id> "<text>"` (note: `bd comment` is not valid).
+
+## ⚠️ Status Field Management
+
+**Always use `bd update --status <value>` to change ticket status.** Do NOT use `bd set-state status=<value>` — that creates a state dimension label, not a status field change. The script automatically sets `--status in_progress` when claiming a ticket (line 75 in bd-next). For any other status updates:
+```bash
+bd update <ticket_id> --status closed
+bd update <ticket_id> --status open
+```
+
+To verify the actual status field (not labels), check with:
+```bash
+bd show <ticket_id> --json | jq '.[0].status'
+```
 
 ## Slack Notifications
 

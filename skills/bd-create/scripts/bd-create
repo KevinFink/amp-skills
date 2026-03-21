@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bd-create: Create a new Beads ticket with metadata and output a handoff prompt
+# compatible with bd-next workflow.
+#
+# Usage:
+#   bd-create --title "Ticket title" --description "Details" --label "frontend" --repo "/path/to/repo"
+#
+# All bd commands run against the specified --repo directory.
+
+TITLE=""
+DESCRIPTION=""
+LABEL=""
+DEPENDS_ON=()
+REPO_DIR=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --title)
+      TITLE="$2"
+      shift 2
+      ;;
+    --description)
+      DESCRIPTION="$2"
+      shift 2
+      ;;
+    --label)
+      LABEL="$2"
+      shift 2
+      ;;
+    --depends-on)
+      DEPENDS_ON+=("$2")
+      shift 2
+      ;;
+    --repo)
+      REPO_DIR="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Validate required arguments
+if [[ -z "$TITLE" ]]; then
+  echo "Error: --title is required" >&2
+  exit 1
+fi
+
+if [[ -z "$REPO_DIR" ]]; then
+  echo "Error: --repo is required" >&2
+  exit 1
+fi
+
+# Resolve to absolute path
+REPO_DIR="$(cd "$REPO_DIR" && pwd)"
+
+# Detect the dolt DB directory
+if [[ -d "$REPO_DIR/.beads/dolt/prod/.dolt" ]]; then
+  DOLT_DB_DIR="$REPO_DIR/.beads/dolt/prod"
+elif [[ -d "$REPO_DIR/.beads/dolt/.dolt" ]]; then
+  DOLT_DB_DIR="$REPO_DIR/.beads/dolt"
+else
+  echo "Error: could not find dolt database under .beads/dolt/" >&2
+  exit 1
+fi
+
+sync_pull() {
+  # Fetch + reset to avoid metadata table merge conflicts
+  (
+    cd "$DOLT_DB_DIR"
+    dolt fetch origin >/dev/null 2>&1 || true
+
+    local local_head remote_head
+    local_head=$(dolt log --oneline -n 1 2>/dev/null | awk '{print $1}' || echo "")
+    remote_head=$(dolt log --oneline -n 1 origin/main 2>/dev/null | awk '{print $1}' || echo "")
+
+    if [[ -n "$local_head" && -n "$remote_head" && "$local_head" != "$remote_head" ]]; then
+      dolt reset --hard origin/main >/dev/null 2>&1 || true
+    fi
+  )
+}
+
+sync_push() {
+  # Use --force to avoid merge conflicts on metadata table
+  (
+    cd "$REPO_DIR"
+    if bd dolt push --force >/dev/null 2>&1; then
+      return 0
+    fi
+
+    echo "Warning: bd dolt push --force failed; trying direct dolt push fallback..." >&2
+    if command -v dolt >/dev/null 2>&1 && [[ -d "$DOLT_DB_DIR/.dolt" ]]; then
+      (cd "$DOLT_DB_DIR" && dolt push --force origin main >/dev/null 2>&1) || true
+    fi
+  )
+}
+
+# Sync before creating
+sync_pull
+
+# Build bd create command
+BD_CMD="bd create"
+
+# Add title (quoted)
+BD_CMD="$BD_CMD \"$TITLE\""
+
+# Add description if provided
+if [[ -n "$DESCRIPTION" ]]; then
+  BD_CMD="$BD_CMD --description \"$DESCRIPTION\""
+fi
+
+# Add label if provided
+if [[ -n "$LABEL" ]]; then
+  BD_CMD="$BD_CMD --label \"$LABEL\""
+fi
+
+# Add dependencies if provided
+for dep in "${DEPENDS_ON[@]}"; do
+  BD_CMD="$BD_CMD --depends-on \"$dep\""
+done
+
+# Execute bd create in the repo directory
+(
+  cd "$REPO_DIR"
+  eval "$BD_CMD" > /tmp/bd_output.txt 2>&1
+)
+
+# Extract ticket ID from output (format: "✓ Created issue: OF-abc — Title")
+TICKET_ID=$(grep -oP "Created issue: \K[A-Z]+-[a-z0-9]+" /tmp/bd_output.txt || echo "")
+
+if [[ -z "$TICKET_ID" ]]; then
+  echo "Error: could not extract ticket ID from bd create output" >&2
+  cat /tmp/bd_output.txt >&2
+  exit 1
+fi
+
+# Sync after creating
+sync_push
+
+# Get ticket details
+(
+  cd "$REPO_DIR"
+  bd show "$TICKET_ID" --json > /tmp/bd_show.json 2>&1
+)
+
+# Build the handoff goal
+HANDOFF_GOAL="Continuing work from thread CURRENT_THREAD_URL. When you lack specific information you can use read_thread to get it.
+
+- I want to start working on Beads ticket ${TICKET_ID}.
+- All bd CLI commands (ready, show, close, create, update) MUST be run from ${REPO_DIR}.
+- This ticket is labeled \`${LABEL}\`. Code changes happen in ${REPO_DIR}.
+- Steps to follow:
+  1. Run: bd show ${TICKET_ID} --json (from ${REPO_DIR})
+  2. Restate and expand the acceptance criteria / definition of done from the ticket.
+  3. If it makes sense, break work into sub-tasks, creating new bd tickets (in ${REPO_DIR}) with appropriate dependencies.
+  4. Execute the work in ${REPO_DIR}, filing any follow-ups as new bd tickets in ${REPO_DIR}.
+  5. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${TICKET_ID}), and which repos will be pushed. Ask me for explicit approval before proceeding.
+  6. Only after I approve: finalize by setting these env vars and running bd-finalize:
+     - AMP_THREAD_URLS: space-separated list of all Amp thread URLs (current thread plus any from 'Continuing work from thread ...' in the handoff goal)
+     - BD_CLOSE_NOTES: a one-or-two sentence summary of what was accomplished
+     - BD_FINALIZE_CONFIRMED=yes
+     Then run: \$BD_SCRIPT_DIR/bd-finalize ${TICKET_ID} <commit_message_file> <files...>
+  - NEVER run git commit, git push, bd close, or bd-finalize without my explicit approval.
+
+Load skills: bd-next"
+
+# Output the handoff prompt
+cat <<PROMPT
+Created Beads ticket: ${TICKET_ID}
+
+Use the handoff tool to create a new thread with follow: true. Replace CURRENT_THREAD_URL in the goal with the actual Amp Thread URL from this thread's context.
+
+Handoff goal:
+
+${HANDOFF_GOAL}
+PROMPT
+
+# Clean up temp files
+rm -f /tmp/bd_output.txt /tmp/bd_show.json

@@ -118,5 +118,5 @@
   ],
   "amp.skills.path": "~/amp-skills/skills",
   "amp.cacheDirectory": "~/.cache/amp",
-  "amp.dangerouslyAllowAll": true
+  "amp.dangerouslyAllowAll": false
 }
