@@ -11,14 +11,14 @@ Use this skill when the user wants to start working on the next Beads ticket.
 
 The `bd` CLI must be run from the repo where Beads is initialized (the current working directory). The bd-next script captures the current directory at startup and runs all bd commands from there.
 
-## ⚠️ Critical: Always Hand Off to a New Thread
+## ⚠️ Critical: Always Start a New Independent Thread
 
 **The agent MUST use the `handoff` tool to start a new thread before doing any implementation work.** The current thread should only:
 1. Select the ticket (run `bd-next` script or identify the ticket ID)
 2. Gather context (ticket details, repo label, working directory)
-3. **Hand off to a new thread** using the `handoff` tool with `follow: true`
+3. **Start a new thread** using the `handoff` tool with `follow: false`
 
-The handoff goal should include: the ticket ID, the working repo path, and a summary of the acceptance criteria. This prevents context degradation on longer tasks.
+Use `follow: false` because the new ticket is an independent task unrelated to the current thread's topic. The current thread's only job is to dispatch the work. The handoff goal should include: the ticket ID, the working repo path, and a summary of the acceptance criteria.
 
 ## Usage
 
@@ -33,7 +33,7 @@ Run the script to get the next ready ticket and instructions:
 - The script runs all bd commands from the current working directory
 - It automatically syncs before selecting/claiming (fetch+reset to avoid merge conflicts) and runs `bd dolt push --force` right after claiming (with a direct `dolt push --force` fallback if needed)
 
-The script outputs a prompt — **use the `handoff` tool** to create a new thread with that prompt as the goal. Do NOT start implementation in the current thread.
+The script outputs a prompt — **use the `handoff` tool with `follow: false`** to create a new independent thread with that prompt as the goal. Do NOT start implementation in the current thread. Use `follow: false` because each ticket is an independent task.
 
 In the new thread:
 1. Navigate to the correct working repo

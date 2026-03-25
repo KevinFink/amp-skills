@@ -93,9 +93,8 @@ else
 fi
 
 # Build the handoff goal (instructions for the new thread)
-handoff_goal="Continuing work from thread CURRENT_THREAD_URL. When you lack specific information you can use read_thread to get it.
+handoff_goal="Work on Beads ticket ${next_id}.
 
-- I want to start working on Beads ticket ${next_id}.
 - All bd CLI commands (ready, show, close, create, update) MUST be run from ${PRODUCT_DIR}.
 ${label_line}
 - Steps to follow:
@@ -105,7 +104,7 @@ ${label_line}
   4. Execute the work in ${work_dir}, filing any follow-ups as new bd tickets in ${PRODUCT_DIR}.
   5. STOP before committing. Present a summary of changes, proposed commit message, the ticket being closed (${next_id}), and which repos will be pushed. Ask me for explicit approval before proceeding.
   6. Only after I approve: finalize by setting these env vars and running bd-finalize:
-     - AMP_THREAD_URLS: space-separated list of all Amp thread URLs (current thread plus any from 'Continuing work from thread ...' in the handoff goal)
+     - AMP_THREAD_URLS: the Amp Thread URL of this thread (from the thread's context)
      - BD_CLOSE_NOTES: a one-or-two sentence summary of what was accomplished
      - BD_FINALIZE_CONFIRMED=yes
      Then run: ${SCRIPT_DIR}/bd-finalize ${next_id} <commit_message_file> <files...>
@@ -116,7 +115,7 @@ Load skills: bd-next"
 cat <<PROMPT
 Start the next Beads ticket: ${next_id}.
 
-Use the handoff tool to create a new thread with follow: true. Replace CURRENT_THREAD_URL in the goal with the actual Amp Thread URL from this thread's context.
+Use the handoff tool to create a new independent thread with follow: false. This is a fresh task unrelated to the current thread.
 
 Handoff goal:
 
