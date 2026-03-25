@@ -16,9 +16,9 @@ The `bd` CLI must be run from the repo where Beads is initialized (the current w
 **The agent MUST use the `handoff` tool to start a new thread before doing any implementation work.** The current thread should only:
 1. Select the ticket (run `bd-next` script or identify the ticket ID)
 2. Gather context (ticket details, repo label, working directory)
-3. **Start a new thread** using the `handoff` tool with `follow: false`
+3. **Start a new thread** using the `handoff` tool with `follow: true`
 
-Use `follow: false` because the new ticket is an independent task unrelated to the current thread's topic. The current thread's only job is to dispatch the work. The handoff goal should include: the ticket ID, the working repo path, and a summary of the acceptance criteria.
+Use `follow: true` to switch to the new thread and begin working immediately. The new ticket is an independent task unrelated to the current thread's topic. The handoff goal should include: the ticket ID, the working repo path, and a summary of the acceptance criteria.
 
 ## Usage
 
@@ -33,7 +33,7 @@ Run the script to get the next ready ticket and instructions:
 - The script runs all bd commands from the current working directory
 - It automatically syncs before selecting/claiming (fetch+reset to avoid merge conflicts) and runs `bd dolt push --force` right after claiming (with a direct `dolt push --force` fallback if needed)
 
-The script outputs a prompt — **use the `handoff` tool with `follow: false`** to create a new independent thread with that prompt as the goal. Do NOT start implementation in the current thread. Use `follow: false` because each ticket is an independent task.
+The script outputs a prompt — **use the `handoff` tool with `follow: true`** to create a new thread with that prompt as the goal and automatically switch to it. Do NOT start implementation in the current thread.
 
 In the new thread:
 1. Navigate to the correct working repo

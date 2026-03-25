@@ -115,7 +115,7 @@ Load skills: bd-next"
 cat <<PROMPT
 Start the next Beads ticket: ${next_id}.
 
-Use the handoff tool to create a new independent thread with follow: false. This is a fresh task unrelated to the current thread.
+Use the handoff tool to create a new thread with follow: true to switch to it immediately.
 
 Handoff goal:
 
