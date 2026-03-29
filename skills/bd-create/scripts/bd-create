@@ -131,7 +131,7 @@ done
 )
 
 # Extract ticket ID from output (format: "✓ Created issue: prod-abc123 — Title")
-TICKET_ID=$(grep -oP "Created issue: \K[a-z]+-[a-z0-9]+" /tmp/bd_output.txt || echo "")
+TICKET_ID=$(grep -oiP "Created issue: \K[a-z0-9]+-[a-z0-9]+" /tmp/bd_output.txt || echo "")
 
 if [[ -z "$TICKET_ID" ]]; then
   echo "Error: could not extract ticket ID from bd create output" >&2
