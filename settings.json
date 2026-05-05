@@ -13,7 +13,7 @@
     {
       "tool": "Bash",
       "matches": {
-        "cmd": "*bd *"
+        "cmd": "gh issue *"
       },
       "action": "allow"
     },
@@ -36,6 +36,70 @@
       "matches": {
         "cmd": [
           "~/photoop-backend/scripts/refresh-admin-ui.sh*",
+          "*notify-slack/toolbox/notify-slack*",
+          "printf * | *notify-slack/toolbox/notify-slack*"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "shell_command",
+      "matches": {
+        "cmd": [
+          "*notify-slack/toolbox/notify-slack*",
+          "printf * | *notify-slack/toolbox/notify-slack*"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": [
+          "scripts/query-prod-db.sh*",
+          "./scripts/query-prod-db.sh*",
+          "*/scripts/query-prod-db.sh*"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "shell_command",
+      "matches": {
+        "cmd": [
+          "scripts/query-prod-db.sh*",
+          "./scripts/query-prod-db.sh*",
+          "*/scripts/query-prod-db.sh*"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": [
+          "ls *",
+          "cat *",
+          "head *",
+          "tail *",
+          "wc *",
+          "grep *",
+          "rg *",
+          "find *",
+          "which *",
+          "echo *",
+          "pwd",
+          "env",
+          "printenv*",
+          "date*",
+          "uname*",
+          "file *",
+          "stat *",
+          "diff *",
+          "sort *",
+          "uniq *",
+          "tr *",
+          "cut *",
           "awk *",
           "basename *",
           "cargo metadata*",
@@ -122,5 +186,8 @@
   ],
   "amp.skills.path": "~/amp-skills/skills",
   "amp.cacheDirectory": "~/.cache/amp",
-  "amp.dangerouslyAllowAll": false
+  "amp.dangerouslyAllowAll": false,
+  "amp.tools.disable": [
+    "librarian"
+  ]
 }
