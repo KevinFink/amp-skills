@@ -78,6 +78,28 @@
       "tool": "Bash",
       "matches": {
         "cmd": [
+          "scripts/release-to-prod.sh --confirm *",
+          "./scripts/release-to-prod.sh --confirm *",
+          "*/scripts/release-to-prod.sh --confirm *"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "shell_command",
+      "matches": {
+        "cmd": [
+          "scripts/release-to-prod.sh --confirm *",
+          "./scripts/release-to-prod.sh --confirm *",
+          "*/scripts/release-to-prod.sh --confirm *"
+        ]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": [
           "ls *",
           "cat *",
           "head *",
