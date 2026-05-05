@@ -97,6 +97,16 @@
       "action": "allow"
     },
     {
+      "tool": "shell_command",
+      "matches": {
+        "cmd": [
+          "curl",
+          "curl *"
+        ]
+      },
+      "action": "allow"
+    },
+    {
       "tool": "Bash",
       "matches": {
         "cmd": [
