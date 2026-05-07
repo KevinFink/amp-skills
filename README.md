@@ -22,7 +22,7 @@ amp skills add ./skills/*
 
 Amp permissions with a safe-by-default policy:
 
-- **Allow** — `bd` commands, read-only shell commands (e.g. `ls`, `grep`, `git status`, `git diff`), and safe formatting tools (`ruff format`, `ruff check --fix`).
+- **Allow** — read-only shell commands (e.g. `ls`, `grep`, `git status`, `git diff`) and safe formatting tools (`ruff format`, `ruff check --fix`).
 - **Ask** — everything else, including any destructive or unfamiliar commands.
 
 See the [Amp permissions docs](https://ampcode.com/manual) for the full rule format.
@@ -32,12 +32,6 @@ See the [Amp permissions docs](https://ampcode.com/manual) for the full rule for
 A skill for writing [ast-grep](https://ast-grep.github.io/) rules to perform structural code search, analysis, and rewriting. Translates natural-language queries into AST-pattern rules, tests them, and runs them against a codebase.
 
 Usage from within Amp: ask to "find all async functions without error handling" or load the `ast-grep` skill.
-
-### skills/bd-next
-
-A skill for working through [Beads](https://github.com/anthropics/beads) tickets. When loaded, it picks the next ready ticket (or a specified one), starts a new Amp thread, and walks through the full lifecycle: showing the ticket, executing the work, committing, and closing.
-
-Usage from within Amp: ask to "start the next bd ticket" or load the `bd-next` skill.
 
 ### skills/tmux
 
