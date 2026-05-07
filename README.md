@@ -36,6 +36,8 @@ amp skills add ./skills/*
 Amp permissions with a safe-by-default policy:
 
 - **Allow** — read-only shell commands (e.g. `ls`, `grep`, `git status`, `git diff`) and safe formatting tools (`ruff format`, `ruff check --fix`).
+- **Allow** — read-only Amp permission inspection (`amp permissions --help`, `amp permissions list`).
+- **Allow** — Slack completion notifications piped to `skills/notify-slack/toolbox/notify-slack`.
 - **Ask** — everything else, including any destructive or unfamiliar commands.
 
 See the [Amp permissions docs](https://ampcode.com/manual) for the full rule format.

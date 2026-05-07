@@ -3,6 +3,36 @@
   "amp.cacheDirectory": "~/.cache/amp",
   "amp.dangerouslyAllowAll": false,
   "amp.updates.mode": "auto",
+  "amp.permissions": [
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "*| */amp-skills/skills/notify-slack/toolbox/notify-slack"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "amp permissions --help && amp permissions list"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "amp permissions list"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "amp permissions --help"
+      },
+      "action": "allow"
+    }
+  ],
   "amp.tools.disable": [
     "librarian"
   ]
