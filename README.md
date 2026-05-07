@@ -4,7 +4,13 @@ Custom [Amp](https://ampcode.com) skills and settings.
 
 ## Setup
 
-Symlink the settings file so Amp reads it:
+Run the installer to symlink settings and plugins, then register skills:
+
+```bash
+./scripts/install.sh
+```
+
+Or perform the steps manually. Symlink the settings file so Amp reads it:
 
 ```bash
 ln -sf "$(pwd)/settings.json" ~/.config/amp/settings.json
@@ -37,6 +43,12 @@ See the [Amp permissions docs](https://ampcode.com/manual) for the full rule for
 ### plugins/ambiguous-shell-permissions.ts
 
 A user-wide Amp plugin that asks for confirmation before ambiguous shell commands such as interpreter execution, destructive `find` usage, file-mutating `sed` usage, and mutating `gh` usage. It allows safe informational and syntax-check commands, including read-only `sed`, read-only `gh` actions such as `gh issue list` and `gh issue view`, `terraform validate`, `amp plugins list`, and `git status`.
+
+Test it with:
+
+```bash
+bun run scripts/test-permissions-plugin.ts
+```
 
 ### skills/ast-grep
 

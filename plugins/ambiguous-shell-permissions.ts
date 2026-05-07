@@ -56,7 +56,7 @@ export default function (amp: PluginAPI) {
 	})
 }
 
-function evaluateShellCommand(command: string): Decision {
+export function evaluateShellCommand(command: string): Decision {
 	const segments = splitShellSegments(command)
 	for (const segment of segments) {
 		const tokens = tokenizeShell(segment)
