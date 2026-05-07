@@ -10,6 +10,13 @@ Symlink the settings file so Amp reads it:
 ln -sf "$(pwd)/settings.json" ~/.config/amp/settings.json
 ```
 
+Symlink tracked plugins so Amp loads the same user-wide plugins on every machine:
+
+```bash
+mkdir -p ~/.config/amp/plugins
+ln -sf "$(pwd)"/plugins/*.ts ~/.config/amp/plugins/
+```
+
 Register the skills directory so Amp can discover skills:
 
 ```bash
@@ -26,6 +33,10 @@ Amp permissions with a safe-by-default policy:
 - **Ask** — everything else, including any destructive or unfamiliar commands.
 
 See the [Amp permissions docs](https://ampcode.com/manual) for the full rule format.
+
+### plugins/ambiguous-shell-permissions.ts
+
+A user-wide Amp plugin that asks for confirmation before ambiguous shell commands such as interpreter execution, destructive `find` usage, file-mutating `sed` usage, and mutating `gh` usage. It allows safe informational and syntax-check commands, including read-only `sed`, read-only `gh` actions such as `gh issue list` and `gh issue view`, `terraform validate`, `amp plugins list`, and `git status`.
 
 ### skills/ast-grep
 
