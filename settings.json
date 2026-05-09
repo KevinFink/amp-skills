@@ -40,9 +40,9 @@
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["gh issue create", "gh issue create *", "gh issue view", "gh issue view *", "gh issue list", "gh issue list *"]
+        "cmd": ["gh issue create", "gh issue create *", "gh issue view", "gh issue view *", "gh issue list", "gh issue list *", "gh issue edit * --add-assignee *", "gh issue edit * --add-label *", "gh issue edit * --remove-label *", "gh run view", "gh run view *", "gh run list", "gh run list *"]
       },
       "action": "allow"
     },
@@ -50,6 +50,13 @@
       "tool": "Bash",
       "matches": {
         "cmd": "git -C * status*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": ["cd", "cd *"]
       },
       "action": "allow"
     },
@@ -77,7 +84,7 @@
     {
       "tool": "Bash",
       "matches": {
-        "cmd": ["aws * list-*", "aws * describe-*", "aws * get-*", "aws * show-*", "aws * head-*"]
+        "cmd": ["aws * list-*", "aws * describe-*", "aws * get-*", "aws * show-*", "aws * head-*", "aws * scan", "aws * scan *"]
       },
       "action": "allow"
     },

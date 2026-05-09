@@ -19,6 +19,9 @@ const AMP_COMMANDS = new Set(['amp'])
 const GIT_COMMANDS = new Set(['git'])
 const SED_COMMANDS = new Set(['sed', 'gsed'])
 const GH_COMMANDS = new Set(['gh'])
+const AWS_COMMANDS = new Set(['aws'])
+const AWS_READ_ONLY_VERBS = ['list-', 'describe-', 'get-', 'show-', 'head-']
+const AWS_READ_ONLY_ACTIONS = new Set(['scan', 'ls', 'help'])
 
 const SAFE_VERSION_FLAGS = new Set(['--version', '-V', '-v', '--help', '-h'])
 const GH_READ_ONLY_GROUPS = new Set(['issue', 'pr', 'repo', 'release', 'run', 'workflow', 'label', 'milestone', 'project', 'gist'])
@@ -28,6 +31,16 @@ const GH_TOP_LEVEL_READ_ONLY_ACTIONS = new Set(['status', 'version', 'help'])
 export function evaluateShellCommand(command: string): TightenerDecision {
 	const segments = splitShellSegments(command)
 	for (const segment of segments) {
+		const substitutionCheck = checkForCommandSubstitution(segment)
+		if (substitutionCheck.kind === 'ask') {
+			return substitutionCheck
+		}
+
+		const subshellCheck = checkForSubshell(segment)
+		if (subshellCheck.kind === 'ask') {
+			return subshellCheck
+		}
+
 		const tokens = tokenizeShell(segment)
 		if (tokens.length === 0) {
 			continue
@@ -42,7 +55,70 @@ export function evaluateShellCommand(command: string): TightenerDecision {
 	return { kind: 'allow', reason: 'No ambiguous interpreter or destructive find usage detected.' }
 }
 
+function checkForCommandSubstitution(segment: string): TightenerDecision {
+	let quote: 'single' | 'double' | null = null
+	let escaped = false
+	for (let index = 0; index < segment.length; index += 1) {
+		const char = segment[index]
+		const next = segment[index + 1]
+
+		if (escaped) {
+			escaped = false
+			continue
+		}
+		if (char === '\\' && quote !== 'single') {
+			escaped = true
+			continue
+		}
+		if (char === "'" && quote !== 'double') {
+			quote = quote === 'single' ? null : 'single'
+			continue
+		}
+		if (char === '"' && quote !== 'single') {
+			quote = quote === 'double' ? null : 'double'
+			continue
+		}
+		if (quote === 'single') {
+			continue
+		}
+		if (char === '$' && next === '(') {
+			return { kind: 'ask', reason: 'Command substitution `$(...)` can execute arbitrary code.' }
+		}
+		if (char === '`') {
+			return { kind: 'ask', reason: 'Backtick command substitution can execute arbitrary code.' }
+		}
+		if (char === '<' && next === '(') {
+			return { kind: 'ask', reason: 'Process substitution `<(...)` can execute arbitrary code.' }
+		}
+		if (char === '>' && next === '(') {
+			return { kind: 'ask', reason: 'Process substitution `>(...)` can execute arbitrary code.' }
+		}
+	}
+	return { kind: 'allow', reason: 'No command/process substitution found.' }
+}
+
+function checkForSubshell(segment: string): TightenerDecision {
+	const trimmed = segment.trimStart()
+	if (trimmed.startsWith('(') || trimmed.startsWith('{ ')) {
+		return { kind: 'ask', reason: 'Subshell or grouping wraps a command and bypasses per-command checks.' }
+	}
+	return { kind: 'allow', reason: 'Segment is not a subshell or grouping.' }
+}
+
 function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDecision {
+	// Skip leading shell env-var assignments (e.g. `AWS_PROFILE=photoop`,
+	// `FOO="a b"`) so the next interpreter check sees the real command name.
+	let envStripped = 0
+	while (envStripped < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[envStripped])) {
+		envStripped += 1
+	}
+	if (envStripped > 0) {
+		if (envStripped === tokens.length) {
+			return { kind: 'allow', reason: 'Only env-var assignments, no command to evaluate.' }
+		}
+		return evaluateSimpleCommand(tokens.slice(envStripped), segment)
+	}
+
 	const command = basename(tokens[0])
 	const args = tokens.slice(1)
 
@@ -83,6 +159,10 @@ function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDeci
 
 	if (GH_COMMANDS.has(command)) {
 		return evaluateGh(args)
+	}
+
+	if (AWS_COMMANDS.has(command)) {
+		return evaluateAws(args)
 	}
 
 	if (command === 'find' || command === 'gfind') {
@@ -298,7 +378,114 @@ function evaluateGh(args: string[]): TightenerDecision {
 		return { kind: 'allow', reason: `gh ${groupOrAction} ${action} is read-only.` }
 	}
 
+	if (groupOrAction === 'issue' && action === 'edit' && ghIssueEditUsesOnlySafeFlags(args)) {
+		return { kind: 'allow', reason: 'gh issue edit only adjusts assignees/labels.' }
+	}
+
+	if (groupOrAction === 'issue' && action === 'create') {
+		return { kind: 'allow', reason: 'gh issue create is explicitly allowed by user policy.' }
+	}
+
 	return { kind: 'ask', reason: `gh ${positional.join(' ') || '<unknown>'} is not in the read-only allowlist.` }
+}
+
+const GH_ISSUE_EDIT_SAFE_FLAGS = new Set([
+	'--add-assignee',
+	'--remove-assignee',
+	'--add-label',
+	'--remove-label',
+	'--add-project',
+	'--remove-project',
+	'-R',
+	'--repo',
+	'--hostname',
+])
+
+function ghIssueEditUsesOnlySafeFlags(args: string[]): boolean {
+	// Skip 'issue' and 'edit' positionals, then ensure remaining tokens are
+	// either issue numbers or safe flag/value pairs.
+	const skipped = skipGhIssueEditHeader(args)
+	for (let index = 0; index < skipped.length; index += 1) {
+		const arg = skipped[index]
+		if (!arg.startsWith('-')) {
+			continue
+		}
+		const [flag] = arg.split('=', 1)
+		if (!GH_ISSUE_EDIT_SAFE_FLAGS.has(flag)) {
+			return false
+		}
+		if (!arg.includes('=')) {
+			index += 1
+		}
+	}
+	return true
+}
+
+function skipGhIssueEditHeader(args: string[]): string[] {
+	let seenIssue = false
+	let seenEdit = false
+	const result: string[] = []
+	for (const arg of args) {
+		if (!seenIssue && arg === 'issue') {
+			seenIssue = true
+			continue
+		}
+		if (seenIssue && !seenEdit && arg === 'edit') {
+			seenEdit = true
+			continue
+		}
+		result.push(arg)
+	}
+	return result
+}
+
+function evaluateAws(args: string[]): TightenerDecision {
+	// AWS CLI structure: `aws [global-flags] <service> <action> [args]`.
+	// We require the *action* token (third positional after `aws`) to be a
+	// known read-only verb, otherwise something like `aws s3 cp local list-X`
+	// would slip past a glob like `aws * list-*`.
+	const positionals = awsPositionals(args)
+	const action = positionals[1]
+	if (!action) {
+		return { kind: 'ask', reason: 'aws invocation has no action positional to verify as read-only.' }
+	}
+	if (AWS_READ_ONLY_ACTIONS.has(action)) {
+		return { kind: 'allow', reason: `aws ${positionals[0]} ${action} is a known read-only action.` }
+	}
+	for (const verb of AWS_READ_ONLY_VERBS) {
+		if (action.startsWith(verb)) {
+			return { kind: 'allow', reason: `aws ${positionals[0]} ${action} is a read-only ${verb}* action.` }
+		}
+	}
+	return { kind: 'ask', reason: `aws ${positionals.slice(0, 2).join(' ')} is not a known read-only action.` }
+}
+
+function awsPositionals(args: string[]): string[] {
+	// AWS global flags that take a value
+	const valueFlags = new Set([
+		'--profile', '--region', '--endpoint-url', '--ca-bundle', '--cli-read-timeout', '--cli-connect-timeout',
+		'--output', '--query', '--color', '--cli-binary-format', '--cli-auto-prompt',
+	])
+	const positionals: string[] = []
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index]
+		if (arg === '--') {
+			positionals.push(...args.slice(index + 1))
+			break
+		}
+		if (arg.startsWith('--') && arg.includes('=')) {
+			continue
+		}
+		if (valueFlags.has(arg)) {
+			index += 1
+			continue
+		}
+		if (arg.startsWith('-')) {
+			continue
+		}
+		positionals.push(arg)
+	}
+	return positionals
 }
 
 function evaluateFind(args: string[], segment: string): TightenerDecision {
@@ -497,7 +684,7 @@ function splitShellSegments(command: string): string[] {
 			continue
 		}
 
-		if (!quote && (char === ';' || char === '\n' || (char === '&' && next === '&') || (char === '|' && next === '|'))) {
+		if (!quote && isSegmentDelimiter(char, next, command, index)) {
 			if (current.trim()) {
 				segments.push(current.trim())
 			}
@@ -516,6 +703,36 @@ function splitShellSegments(command: string): string[] {
 	}
 
 	return segments
+}
+
+function isSegmentDelimiter(char: string, next: string | undefined, command: string, index: number): boolean {
+	if (char === ';' || char === '\n') {
+		return true
+	}
+	if (char === '&' && next === '&') {
+		return true
+	}
+	if (char === '|' && next === '|') {
+		return true
+	}
+	if (char === '|' && next !== '|') {
+		const prevNonSpace = previousNonSpaceChar(command, index)
+		if (prevNonSpace === '>' || prevNonSpace === '<' || prevNonSpace === '|') {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+function previousNonSpaceChar(command: string, index: number): string | undefined {
+	for (let i = index - 1; i >= 0; i -= 1) {
+		const char = command[i]
+		if (char !== ' ' && char !== '\t') {
+			return char
+		}
+	}
+	return undefined
 }
 
 function tokenizeShell(segment: string): string[] {

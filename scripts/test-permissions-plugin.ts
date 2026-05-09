@@ -13,8 +13,34 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: "sed -i 's/a/b/' README.md", expected: 'ask' },
 	{ command: "sed -n 's/a/b/w out.txt' README.md", expected: 'ask' },
 	{ command: "python -c 'print(1)'", expected: 'ask' },
+	{ command: "AWS_PROFILE=photoop python -c 'print(1)'", expected: 'ask' },
+	{ command: 'AWS_PROFILE=photoop ls', expected: 'allow' },
 	{ command: 'find . -name node_modules -delete', expected: 'ask' },
 	{ command: 'gh issue close 123 --repo photoopapp/photoop-product', expected: 'ask' },
+	{ command: 'gh issue create --title "bug" --body "details" --repo photoopapp/photoop-product', expected: 'allow' },
+	{ command: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product', expected: 'allow' },
+	{ command: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: 'allow' },
+	{ command: 'gh issue edit 249 --title "new title" --repo photoopapp/photoop-product', expected: 'ask' },
+	{ command: 'gh issue edit 249 --body "new body" --repo photoopapp/photoop-product', expected: 'ask' },
+	{ command: 'gh issue edit 249 --add-label foo --body "rewrite" --repo a/b', expected: 'ask' },
+	// AWS subcommand-position checks
+	{ command: 'aws ec2 describe-instances', expected: 'allow' },
+	{ command: 'aws s3 ls', expected: 'allow' },
+	{ command: 'aws s3api list-buckets', expected: 'allow' },
+	{ command: 'aws dynamodb scan --table-name X', expected: 'allow' },
+	{ command: 'aws s3 cp local list-bucket/key', expected: 'ask' },
+	{ command: 'aws ec2 terminate-instances --instance-ids i-1', expected: 'ask' },
+	{ command: 'aws --profile p --region us-east-1 ec2 describe-instances', expected: 'allow' },
+	{ command: 'aws ec2', expected: 'ask' },
+	// Command/process substitution and backticks
+	{ command: 'aws ec2 describe-instances $(rm -rf /)', expected: 'ask' },
+	{ command: 'aws ec2 describe-instances `rm -rf /`', expected: 'ask' },
+	{ command: 'diff <(echo a) <(echo b)', expected: 'ask' },
+	// Single-quoted substitution markers should NOT trigger (they're literal)
+	{ command: "echo '$(date)'", expected: 'allow' },
+	// Subshell grouping
+	{ command: '(rm -rf /)', expected: 'ask' },
+	{ command: '{ rm -rf /; }', expected: 'ask' },
 	// local_psql.sh: read-only by default, asks when --write is present so the
 	// plugin can override the broad allow rule in settings.json.
 	{ command: '~/photoop-backend/scripts/local_psql.sh', expected: 'allow' },

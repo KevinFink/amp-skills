@@ -119,17 +119,25 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 }
 
 function decideSingle(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined): Decision {
+	const normalizedCmd = cmd === undefined ? cmd : stripEnvPrefix(cmd)
 	for (const rule of userRules) {
-		if (ruleMatches(rule, tool, cmd)) {
+		if (ruleMatches(rule, tool, normalizedCmd)) {
 			return { action: rule.action, rule, source: 'user' }
 		}
 	}
 	for (const rule of builtinRules) {
-		if (ruleMatches(rule, tool, cmd)) {
+		if (ruleMatches(rule, tool, normalizedCmd)) {
 			return { action: rule.action, rule, source: 'builtin' }
 		}
 	}
 	return { action: 'ask', rule: null, source: 'default' }
+}
+
+// Strip leading shell env-var assignments (e.g. `AWS_PROFILE=photoop FOO="a b"`)
+// so a rule like `aws * list-*` can match `AWS_PROFILE=photoop aws iam list-...`
+// without forcing every rule to spell out env-prefix variants.
+export function stripEnvPrefix(segment: string): string {
+	return segment.replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '')
 }
 
 function splitShellSegments(command: string): string[] {
@@ -162,7 +170,7 @@ function splitShellSegments(command: string): string[] {
 			current += char
 			continue
 		}
-		if (!quote && (char === ';' || char === '\n' || (char === '&' && next === '&') || (char === '|' && next === '|'))) {
+		if (!quote && isSegmentDelimiter(char, next, command, index)) {
 			if (current.trim()) {
 				segments.push(current.trim())
 			}
@@ -179,6 +187,40 @@ function splitShellSegments(command: string): string[] {
 		segments.push(current.trim())
 	}
 	return segments
+}
+
+function isSegmentDelimiter(char: string, next: string | undefined, command: string, index: number): boolean {
+	if (char === ';' || char === '\n') {
+		return true
+	}
+	if (char === '&' && next === '&') {
+		return true
+	}
+	if (char === '|' && next === '|') {
+		return true
+	}
+	// Single pipe `|` separates commands in a pipeline. Each side must be
+	// independently allowed, otherwise things like `aws ... | rm -rf /` would
+	// slip through the user's `aws * describe-*` allow.
+	if (char === '|' && next !== '|') {
+		// Skip cases where `|` is part of a redirect like `>|` or `<|`.
+		const prevNonSpace = previousNonSpaceChar(command, index)
+		if (prevNonSpace === '>' || prevNonSpace === '<' || prevNonSpace === '|') {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+function previousNonSpaceChar(command: string, index: number): string | undefined {
+	for (let i = index - 1; i >= 0; i -= 1) {
+		const char = command[i]
+		if (char !== ' ' && char !== '\t') {
+			return char
+		}
+	}
+	return undefined
 }
 
 function ruleMatches(rule: Rule, tool: string, cmd: string | undefined): boolean {
