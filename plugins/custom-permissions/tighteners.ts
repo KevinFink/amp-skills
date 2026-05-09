@@ -1,6 +1,13 @@
-import type { PluginAPI, ToolCallResult } from '@ampcode/plugin'
-
-type Decision =
+/**
+ * Tighteners: heuristics that look at a shell command and decide whether the
+ * permissions plugin should ask the user even if the rule cascade would
+ * otherwise allow it (e.g., `python -c`, `sed -i`, `find -delete`,
+ * `git worktree remove`, `local_psql.sh --write`).
+ *
+ * Imported by ./custom-permissions.ts so we have a single plugin (and a
+ * single confirm modal) instead of two parallel plugins both prompting.
+ */
+export type TightenerDecision =
 	| { kind: 'allow'; reason: string }
 	| { kind: 'ask'; reason: string }
 
@@ -18,45 +25,7 @@ const GH_READ_ONLY_GROUPS = new Set(['issue', 'pr', 'repo', 'release', 'run', 'w
 const GH_READ_ONLY_ACTIONS = new Set(['list', 'view', 'status', 'diff', 'checks'])
 const GH_TOP_LEVEL_READ_ONLY_ACTIONS = new Set(['status', 'version', 'help'])
 
-export default function (amp: PluginAPI) {
-	amp.on('tool.call', async (event, ctx): Promise<ToolCallResult> => {
-		const shell = amp.helpers.shellCommandFromToolCall(event)
-		if (!shell) {
-			return { action: 'allow' }
-		}
-
-		const decision = evaluateShellCommand(shell.command)
-		if (decision.kind === 'allow') {
-			return { action: 'allow' }
-		}
-
-		const message = `This shell command requires permission review: ${decision.reason}\n\nCommand:\n${shell.command}`
-		try {
-			const approved = await ctx.ui.confirm({
-				title: 'Review ambiguous shell command',
-				message,
-				confirmButtonText: 'Allow command',
-			})
-			if (approved) {
-				return { action: 'allow' }
-			}
-			return {
-				action: 'reject-and-continue',
-				message: `Command was not approved by the user. ${decision.reason}`,
-			}
-		} catch (error) {
-			if (error instanceof Error && amp.helpers.isPluginUINotAvailableError(error)) {
-				return {
-					action: 'reject-and-continue',
-					message: `Command requires permission review, but plugin UI is unavailable. ${decision.reason}`,
-				}
-			}
-			throw error
-		}
-	})
-}
-
-export function evaluateShellCommand(command: string): Decision {
+export function evaluateShellCommand(command: string): TightenerDecision {
 	const segments = splitShellSegments(command)
 	for (const segment of segments) {
 		const tokens = tokenizeShell(segment)
@@ -73,7 +42,7 @@ export function evaluateShellCommand(command: string): Decision {
 	return { kind: 'allow', reason: 'No ambiguous interpreter or destructive find usage detected.' }
 }
 
-function evaluateSimpleCommand(tokens: string[], segment: string): Decision {
+function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDecision {
 	const command = basename(tokens[0])
 	const args = tokens.slice(1)
 
@@ -120,10 +89,25 @@ function evaluateSimpleCommand(tokens: string[], segment: string): Decision {
 		return evaluateFind(args, segment)
 	}
 
+	if (isLocalPsqlScript(tokens[0])) {
+		return evaluateLocalPsql(args)
+	}
+
 	return { kind: 'allow', reason: 'Command is not one of the guarded ambiguous shell tools.' }
 }
 
-function evaluatePython(args: string[], segment: string): Decision {
+function isLocalPsqlScript(path: string): boolean {
+	return path === '~/photoop-backend/scripts/local_psql.sh' || path === '/home/ec2-user/photoop-backend/scripts/local_psql.sh'
+}
+
+function evaluateLocalPsql(args: string[]): TightenerDecision {
+	if (args.includes('--write')) {
+		return { kind: 'ask', reason: 'local_psql.sh --write allows DDL/DML and can mutate the database.' }
+	}
+	return { kind: 'allow', reason: 'local_psql.sh without --write is read-only.' }
+}
+
+function evaluatePython(args: string[], segment: string): TightenerDecision {
 	if (args.length === 0) {
 		return { kind: 'ask', reason: 'Python without arguments may open an interpreter and run arbitrary code.' }
 	}
@@ -151,7 +135,7 @@ function evaluatePython(args: string[], segment: string): Decision {
 	return { kind: 'ask', reason: `Python script execution (${args[0]}) can run arbitrary code.` }
 }
 
-function evaluateShellInterpreter(command: string, args: string[], segment: string): Decision {
+function evaluateShellInterpreter(command: string, args: string[], segment: string): TightenerDecision {
 	if (args.length === 0) {
 		return { kind: 'ask', reason: `${command} without arguments opens an interactive shell.` }
 	}
@@ -175,7 +159,7 @@ function evaluateShellInterpreter(command: string, args: string[], segment: stri
 	return { kind: 'ask', reason: `${command} script execution (${args[0]}) can run arbitrary shell code.` }
 }
 
-function evaluateNode(args: string[], segment: string): Decision {
+function evaluateNode(args: string[], segment: string): TightenerDecision {
 	if (args.length === 0) {
 		return { kind: 'ask', reason: 'Node without arguments opens a REPL that can run arbitrary code.' }
 	}
@@ -199,7 +183,7 @@ function evaluateNode(args: string[], segment: string): Decision {
 	return { kind: 'ask', reason: `Node script execution (${args[0]}) can run arbitrary JavaScript.` }
 }
 
-function evaluateTerraform(args: string[]): Decision {
+function evaluateTerraform(args: string[]): TightenerDecision {
 	const subcommand = terraformSubcommand(args)
 	if (subcommand === 'validate') {
 		return { kind: 'allow', reason: 'terraform validate is a read-only configuration validation command.' }
@@ -208,7 +192,7 @@ function evaluateTerraform(args: string[]): Decision {
 	return { kind: 'allow', reason: 'Command is not a guarded terraform validation command.' }
 }
 
-function evaluateAmp(args: string[]): Decision {
+function evaluateAmp(args: string[]): TightenerDecision {
 	const subcommand = subcommandAfterGlobalFlags(args)
 	if (subcommand === 'plugins' && args.includes('list')) {
 		return { kind: 'allow', reason: 'amp plugins list only lists installed plugins.' }
@@ -217,16 +201,41 @@ function evaluateAmp(args: string[]): Decision {
 	return { kind: 'allow', reason: 'Command is not a guarded amp command.' }
 }
 
-function evaluateGit(args: string[]): Decision {
-	const subcommand = subcommandAfterGlobalFlags(args)
+function evaluateGit(args: string[]): TightenerDecision {
+	const positional = gitPositionals(args)
+	const subcommand = positional[0]
 	if (subcommand === 'status') {
 		return { kind: 'allow', reason: 'git status is a read-only repository status command.' }
+	}
+
+	if (subcommand === 'worktree' && positional[1] === 'remove') {
+		return { kind: 'ask', reason: 'git worktree remove deletes a worktree and can lose uncommitted work.' }
 	}
 
 	return { kind: 'allow', reason: 'Command is not a guarded git command.' }
 }
 
-function evaluateSed(command: string, args: string[], segment: string): Decision {
+function gitPositionals(args: string[]): string[] {
+	const positionals: string[] = []
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index]
+		if (arg === '--') {
+			positionals.push(...args.slice(index + 1))
+			break
+		}
+		if (arg === '-C' || arg === '-c') {
+			index += 1
+			continue
+		}
+		if (arg.startsWith('-')) {
+			continue
+		}
+		positionals.push(arg)
+	}
+	return positionals
+}
+
+function evaluateSed(command: string, args: string[], segment: string): TightenerDecision {
 	if (segment.includes('>')) {
 		return { kind: 'ask', reason: `${command} output redirection can write files.` }
 	}
@@ -272,7 +281,7 @@ function evaluateSed(command: string, args: string[], segment: string): Decision
 	return { kind: 'allow', reason: `${command} command does not use in-place editing, script files, or write/execute sed commands.` }
 }
 
-function evaluateGh(args: string[]): Decision {
+function evaluateGh(args: string[]): TightenerDecision {
 	const positional = ghPositionals(args)
 	const groupOrAction = positional[0]
 	const action = positional[1]
@@ -292,7 +301,7 @@ function evaluateGh(args: string[]): Decision {
 	return { kind: 'ask', reason: `gh ${positional.join(' ') || '<unknown>'} is not in the read-only allowlist.` }
 }
 
-function evaluateFind(args: string[], segment: string): Decision {
+function evaluateFind(args: string[], segment: string): TightenerDecision {
 	const dangerous = args.find((arg) => ['-delete', '-exec', '-execdir', '-ok', '-okdir'].includes(arg))
 	if (dangerous) {
 		return { kind: 'ask', reason: `find ${dangerous} can modify files or run arbitrary commands.` }

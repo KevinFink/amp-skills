@@ -14,6 +14,12 @@ for plugin in "${repo_root}"/plugins/*.ts; do
 	ln -sf "${plugin}" "${plugins_dir}/$(basename "${plugin}")"
 done
 
+# custom-permissions is the only plugin in plugins/custom-permissions/.
+# Other files in that directory are libraries (tighteners.ts) or the rule
+# snapshot (builtin-rules.json) and are imported via the plugin's symlink.
+ln -sf "${repo_root}/plugins/custom-permissions/custom-permissions.ts" \
+	"${plugins_dir}/custom-permissions.ts"
+
 if command -v amp >/dev/null 2>&1; then
 	amp skills add "${repo_root}"/skills/*
 else

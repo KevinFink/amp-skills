@@ -1,0 +1,66 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { decide, type Rule } from '../plugins/custom-permissions/custom-permissions'
+
+const repoRoot = resolve(import.meta.dir, '..')
+
+const settings = JSON.parse(readFileSync(resolve(repoRoot, 'settings.json'), 'utf8')) as Record<string, unknown>
+const userRules = (settings['amp.permissions'] as Rule[] | undefined) ?? []
+const builtinRules = JSON.parse(readFileSync(resolve(repoRoot, 'plugins/custom-permissions/builtin-rules.json'), 'utf8')) as Rule[]
+
+interface TestCase {
+	tool: string
+	cmd?: string
+	expected: { action: Rule['action'] | 'ask'; source: 'user' | 'builtin' | 'default' }
+	note?: string
+}
+
+const cases: TestCase[] = [
+	// User rules from settings.json win over built-in
+	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'terraform plan -out=plan.tfplan', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: "sed -n '470,580p' ~/photoop-infrastructure/terraform/environments/prod/main.tf", expected: { action: 'allow', source: 'user' } },
+	// AWS read-only verbs (single command and segmented multi-command)
+	{ tool: 'Bash', cmd: 'aws --profile photoop sqs list-queues --queue-name-prefix sbw-prod', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'aws ec2 describe-instances --region us-east-1', expected: { action: 'allow', source: 'user' } },
+	{
+		tool: 'Bash',
+		cmd: 'aws --profile photoop sqs list-queues --queue-name-prefix sbw-prod 2>&1\necho "---"\naws --profile photoop s3api list-buckets --query "Buckets[?starts_with(Name, \'sbw-prod\')].Name" --output text 2>&1',
+		expected: { action: 'allow', source: 'user' },
+	},
+	// Segmented allow shouldn't smuggle through a destructive command
+	{ tool: 'Bash', cmd: 'aws sqs list-queues\naws s3 rm s3://bucket/key', expected: { action: 'ask', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'echo hi && rm -rf /tmp/foo --recursive --force', expected: { action: 'ask', source: 'builtin' } },
+	// Built-in defaults
+	{ tool: 'Bash', cmd: 'ls', expected: { action: 'allow', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'echo hello', expected: { action: 'allow', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'git push origin main', expected: { action: 'ask', source: 'builtin' }, note: '*git*push*' },
+	{ tool: 'Bash', cmd: 'terraform apply', expected: { action: 'ask', source: 'builtin' }, note: 'catch-all ask Bash' },
+	// Tool-name globs
+	{ tool: 'mcp__filesystem', expected: { action: 'allow', source: 'builtin' } },
+	{ tool: 'tb__notify_slack', expected: { action: 'allow', source: 'builtin' } },
+	{ tool: 'finder', expected: { action: 'allow', source: 'builtin' } },
+	// Unknown tool with no matching rule → default ask
+	{ tool: 'totally_made_up_tool', expected: { action: 'ask', source: 'default' } },
+]
+
+let failures = 0
+for (const c of cases) {
+	const decision = decide(userRules, builtinRules, c.tool, c.cmd)
+	const ok = decision.action === c.expected.action && decision.source === c.expected.source
+	if (!ok) {
+		failures += 1
+		console.error(`FAIL ${c.tool}${c.cmd ? ` :: ${c.cmd}` : ''}`)
+		console.error(`  expected: ${c.expected.action} (${c.expected.source})`)
+		console.error(`  actual:   ${decision.action} (${decision.source})${decision.rule ? ` rule=${JSON.stringify(decision.rule)}` : ''}`)
+		continue
+	}
+	console.log(`PASS ${c.tool}${c.cmd ? ` :: ${c.cmd}` : ''}`)
+}
+
+if (failures > 0) {
+	process.exit(1)
+}

@@ -33,23 +33,16 @@ amp skills add ./skills/*
 
 ### settings.json
 
-Amp permissions with a safe-by-default policy:
+Baseline Amp configuration (skills path, cache directory, update mode, disabled tools). All shell-command permission rules are owned by the permissions plugin below so they share a single modal UI. See the [Amp permissions docs](https://ampcode.com/manual) for the rule format.
 
-- **Allow** — read-only shell commands (e.g. `ls`, `grep`, `git status`, `git diff`) and safe formatting tools (`ruff format`, `ruff check --fix`).
-- **Allow** — read-only Amp permission inspection (`amp permissions --help`, `amp permissions list`).
-- **Allow** — Slack completion notifications piped to `skills/notify-slack/toolbox/notify-slack`.
-- **Ask** — everything else, including any destructive or unfamiliar commands.
+### plugins/custom-permissions/
 
-See the [Amp permissions docs](https://ampcode.com/manual) for the full rule format.
-
-### plugins/ambiguous-shell-permissions.ts
-
-A user-wide Amp plugin that asks for confirmation before ambiguous shell commands such as interpreter execution, destructive `find` usage, file-mutating `sed` usage, and mutating `gh` usage. It allows safe informational and syntax-check commands, including read-only `sed`, read-only `gh` actions such as `gh issue list` and `gh issue view`, `terraform validate`, `amp plugins list`, and `git status`.
-
-Test it with:
+A single user-wide Amp plugin that replaces Amp's legacy permissions plugin. Snapshots Amp's built-in rules into `builtin-rules.json`, layers `amp.permissions` from settings.json on top, and applies heuristic tighteners (`tighteners.ts`) so every prompt uses the plugin's confirm modal. See [plugins/custom-permissions/README.md](plugins/custom-permissions/README.md) for activation steps and risks. Refresh the snapshot after Amp upgrades:
 
 ```bash
-bun run scripts/test-permissions-plugin.ts
+./scripts/refresh-builtin-permissions.sh
+bun run scripts/test-custom-permissions.ts   # cascade + segment tests
+bun run scripts/test-permissions-plugin.ts   # tightener heuristics tests
 ```
 
 ### skills/ast-grep
