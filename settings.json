@@ -5,63 +5,63 @@
   "amp.updates.mode": "auto",
   "amp.permissions": [
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": "*| */amp-skills/skills/notify-slack/toolbox/notify-slack"
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["true", "false", ":"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["for * in *", "do", "done", "then", "fi", "else", "esac"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["npx html-validate *", "npx --yes html-validate *", "npx html-validate * 2>&1 |*", "npx --yes html-validate * 2>&1 |*"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["nl -ba * | sed -n *", "sed -n *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["amp permissions --help", "amp permissions list", "amp permissions list *", "amp permissions test", "amp permissions test *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["node --check *", "node --check * && echo *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["python -m py_compile *", "python3 -m py_compile *", "python -m compileall *", "python3 -m compileall *"]
       },
@@ -75,56 +75,56 @@
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": "git -C * status*"
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["cd", "cd *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["git add", "git add *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["git worktree", "git worktree *", "git -C * worktree", "git -C * worktree *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["terraform fmt", "terraform fmt *", "terraform validate", "terraform validate *", "terraform plan", "terraform plan *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["aws * list-*", "aws * describe-*", "aws * get-*", "aws * show-*", "aws * head-*", "aws * scan", "aws * scan *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["~/photoop-product/scripts/worktree-start.sh *", "/home/ec2-user/photoop-product/scripts/worktree-start.sh *"]
       },
       "action": "allow"
     },
     {
-      "tool": "Bash",
+      "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["~/photoop-backend/scripts/local_psql.sh", "~/photoop-backend/scripts/local_psql.sh *", "/home/ec2-user/photoop-backend/scripts/local_psql.sh", "/home/ec2-user/photoop-backend/scripts/local_psql.sh *"]
       },

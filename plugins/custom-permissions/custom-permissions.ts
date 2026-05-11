@@ -96,7 +96,7 @@ export default function (amp: PluginAPI) {
 }
 
 export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined): Decision {
-	if (tool === 'Bash' && cmd !== undefined) {
+	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined) {
 		const segments = splitShellSegments(cmd)
 		if (segments.length > 1) {
 			// Multi-segment commands are evaluated per segment so that broad

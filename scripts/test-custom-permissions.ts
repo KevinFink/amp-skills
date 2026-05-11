@@ -44,6 +44,10 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product 2>&1', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
+	// shell_command tool (used by sub-agents/MCP) must hit the same user rules as Bash
+	{ tool: 'shell_command', cmd: "sed -n '1,140p' app/main.py && sed -n '320,380p' app/main.py", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'terraform plan -out=plan.tfplan', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
