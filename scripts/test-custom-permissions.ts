@@ -43,6 +43,7 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product 2>&1', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'terraform plan -out=plan.tfplan', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
@@ -88,6 +89,32 @@ const cases: TestCase[] = [
 	// Segmented allow shouldn't smuggle through a destructive command
 	{ tool: 'Bash', cmd: 'aws sqs list-queues\naws s3 rm s3://bucket/key', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'echo hi && rm -rf /tmp/foo --recursive --force', expected: { action: 'ask', source: 'builtin' } },
+	// `|| true` shell idiom: each segment must be independently allowed
+	{ tool: 'Bash', cmd: 'ls admin/ && ls admin/ingestion 2>/dev/null || true', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'true', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'false', expected: { action: 'allow', source: 'user' } },
+	// Bare read-only utilities (commonly used as pipe sinks)
+	{ tool: 'Bash', cmd: 'grep -rln "ingestion_queue\\|_ingestion_queue_url\\|sandwichboard.*ingest\\|receive_message" ~/photoop-backend/ --include="*.py" 2>/dev/null | head', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
+	// rg/sort with args (no builtin allow, only `rg -<flags>` is allowed by builtin regex)
+	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'echo a | sort | uniq -c', expected: { action: 'allow', source: 'user' } },
+	// for-loop with safe body
+	{
+		tool: 'Bash',
+		cmd: 'cd ~/worktrees/photoop-infrastructure/issue-93 && for f in nginx/a.conf nginx/b.conf; do\n  echo "=== $f ==="\n  grep -n "location\\|proxy_pass" "$f" | head -20\ndone',
+		expected: { action: 'allow', source: 'user' },
+	},
+	// python -m py_compile / compileall: bytecode/syntax check is safe
+	{ tool: 'Bash', cmd: 'cd ~/worktrees/sandwichboard-workflow/issue-94 && python3 -m py_compile app/config.py app/discovery/llm_payload_store.py && echo OK', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'python -m py_compile foo.py', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'python3 -m compileall app/', expected: { action: 'allow', source: 'user' } },
+	// for-loop with destructive body must still ask (single-line: `do rm -rf $x`)
+	{ tool: 'Bash', cmd: 'for x in *; do rm -rf $x; done', expected: { action: 'ask', source: 'builtin' } },
+	// for-loop iteration list with command substitution: single-line `do <cmd>` is asked by builtin `do *`,
+	// so dangerous payload never gets to slip through.
+	{ tool: 'Bash', cmd: 'for x in $(rm -rf /); do echo $x; done', expected: { action: 'ask', source: 'builtin' } },
 	// Built-in defaults
 	{ tool: 'Bash', cmd: 'ls', expected: { action: 'allow', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'echo hello', expected: { action: 'allow', source: 'builtin' } },

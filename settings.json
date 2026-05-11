@@ -14,6 +14,27 @@
     {
       "tool": "Bash",
       "matches": {
+        "cmd": ["true", "false", ":"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": ["for * in *", "do", "done", "then", "fi", "else", "esac"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
         "cmd": ["npx html-validate *", "npx --yes html-validate *", "npx html-validate * 2>&1 |*", "npx --yes html-validate * 2>&1 |*"]
       },
       "action": "allow"
@@ -40,9 +61,16 @@
       "action": "allow"
     },
     {
+      "tool": "Bash",
+      "matches": {
+        "cmd": ["python -m py_compile *", "python3 -m py_compile *", "python -m compileall *", "python3 -m compileall *"]
+      },
+      "action": "allow"
+    },
+    {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["gh issue create", "gh issue create *", "gh issue view", "gh issue view *", "gh issue list", "gh issue list *", "gh issue edit * --add-assignee *", "gh issue edit * --add-label *", "gh issue edit * --remove-label *", "gh run view", "gh run view *", "gh run list", "gh run list *"]
+        "cmd": ["gh issue create", "gh issue create *", "gh issue view", "gh issue view *", "gh issue list", "gh issue list *", "gh issue edit * --add-assignee *", "gh issue edit * --add-label *", "gh issue edit * --remove-label *", "gh issue comment", "gh issue comment *", "gh run view", "gh run view *", "gh run list", "gh run list *"]
       },
       "action": "allow"
     },

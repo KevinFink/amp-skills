@@ -18,6 +18,7 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: 'find . -name node_modules -delete', expected: 'ask' },
 	{ command: 'gh issue close 123 --repo photoopapp/photoop-product', expected: 'ask' },
 	{ command: 'gh issue create --title "bug" --body "details" --repo photoopapp/photoop-product', expected: 'allow' },
+	{ command: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: 'allow' },
 	{ command: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product', expected: 'allow' },
 	{ command: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: 'allow' },
 	{ command: 'gh issue edit 249 --title "new title" --repo photoopapp/photoop-product', expected: 'ask' },

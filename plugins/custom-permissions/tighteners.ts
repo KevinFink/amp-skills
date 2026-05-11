@@ -386,6 +386,10 @@ function evaluateGh(args: string[]): TightenerDecision {
 		return { kind: 'allow', reason: 'gh issue create is explicitly allowed by user policy.' }
 	}
 
+	if (groupOrAction === 'issue' && action === 'comment') {
+		return { kind: 'allow', reason: 'gh issue comment is explicitly allowed by user policy.' }
+	}
+
 	return { kind: 'ask', reason: `gh ${positional.join(' ') || '<unknown>'} is not in the read-only allowlist.` }
 }
 
