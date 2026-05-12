@@ -104,6 +104,8 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'echo a | sort | uniq -c', expected: { action: 'allow', source: 'user' } },
+	// jq as pipe sink
+	{ tool: 'Bash', cmd: `gh issue list --repo photoopapp/photoop-product --state open --json number,title,labels --limit 100 | jq -r '.[] | select((.title|test("OpenRouter|sync";"i"))) | "#\\(.number) \\(.title)"'`, expected: { action: 'allow', source: 'user' } },
 	// for-loop with safe body
 	{
 		tool: 'Bash',

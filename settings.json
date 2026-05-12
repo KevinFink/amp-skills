@@ -21,7 +21,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *"]
+        "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *", "jq", "jq *"]
       },
       "action": "allow"
     },
