@@ -104,6 +104,12 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'echo a | sort | uniq -c', expected: { action: 'allow', source: 'user' } },
+	// pgrep as read-only utility
+	{
+		tool: 'Bash',
+		cmd: 'aws sqs get-queue-attributes --queue-url https://sqs.us-east-1.amazonaws.com/247688347937/sbw-prod-ingestion --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible 2>&1 | grep Approx\necho "---workers running:"\npgrep -af "app.workers.ingestion" 2>&1 | grep -v grep | head\necho "---recent backend log:"\ntail -5 ~/sb-backend.log',
+		expected: { action: 'allow', source: 'user' },
+	},
 	// jq as pipe sink
 	{ tool: 'Bash', cmd: `gh issue list --repo photoopapp/photoop-product --state open --json number,title,labels --limit 100 | jq -r '.[] | select((.title|test("OpenRouter|sync";"i"))) | "#\\(.number) \\(.title)"'`, expected: { action: 'allow', source: 'user' } },
 	// for-loop with safe body
