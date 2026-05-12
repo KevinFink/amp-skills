@@ -7,7 +7,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": "*| */amp-skills/skills/notify-slack/toolbox/notify-slack"
+        "cmd": ["printf *", "/home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack", "~/amp-skills/skills/notify-slack/toolbox/notify-slack"]
       },
       "action": "allow"
     },
@@ -77,7 +77,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *"]
+        "cmd": ["git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *"]
       },
       "action": "allow"
     },

@@ -112,6 +112,10 @@ const cases: TestCase[] = [
 	},
 	{ tool: 'Bash', cmd: 'git -C ~/repo show HEAD', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo diff --stat', expected: { action: 'allow', source: 'user' } },
+	// bare `git remote` (no -C)
+	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git remote get-url origin', expected: { action: 'allow', source: 'user' } },
 	// pgrep as read-only utility
 	{
 		tool: 'Bash',
@@ -135,6 +139,17 @@ const cases: TestCase[] = [
 	// for-loop iteration list with command substitution: single-line `do <cmd>` is asked by builtin `do *`,
 	// so dangerous payload never gets to slip through.
 	{ tool: 'Bash', cmd: 'for x in $(rm -rf /); do echo $x; done', expected: { action: 'ask', source: 'builtin' } },
+	// notify-slack pipeline: printf segment + bare tool path segment
+	{
+		tool: 'Bash',
+		cmd: "printf 'status: completed\\nsummary: Did the thing.\\n' | /home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack",
+		expected: { action: 'allow', source: 'user' },
+	},
+	{
+		tool: 'shell_command',
+		cmd: "printf 'status: needs_attention\\nsummary: Need input.\\n' | /home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack",
+		expected: { action: 'allow', source: 'user' },
+	},
 	// Built-in defaults
 	{ tool: 'Bash', cmd: 'ls', expected: { action: 'allow', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'echo hello', expected: { action: 'allow', source: 'builtin' } },
