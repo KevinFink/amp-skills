@@ -77,7 +77,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": "git -C * status*"
+        "cmd": ["git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *"]
       },
       "action": "allow"
     },

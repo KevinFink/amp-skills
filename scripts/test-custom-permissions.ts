@@ -104,6 +104,14 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'echo a | sort | uniq -c', expected: { action: 'allow', source: 'user' } },
+	// git -C <dir> read-only verbs
+	{
+		tool: 'Bash',
+		cmd: 'git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 status --short --branch && git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 log --oneline -3',
+		expected: { action: 'allow', source: 'user' },
+	},
+	{ tool: 'Bash', cmd: 'git -C ~/repo show HEAD', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git -C ~/repo diff --stat', expected: { action: 'allow', source: 'user' } },
 	// pgrep as read-only utility
 	{
 		tool: 'Bash',
