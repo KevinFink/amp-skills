@@ -112,6 +112,9 @@ const cases: TestCase[] = [
 	},
 	{ tool: 'Bash', cmd: 'git -C ~/repo show HEAD', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo diff --stat', expected: { action: 'allow', source: 'user' } },
+	// bash -n / sh -n syntax check (non-destructive)
+	{ tool: 'Bash', cmd: 'bash -n ~/photoop-product/scripts/worktree-land.sh', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'sh -n ./script.sh', expected: { action: 'allow', source: 'user' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },

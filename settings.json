@@ -56,7 +56,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["node --check *", "node --check * && echo *"]
+        "cmd": ["node --check *", "node --check * && echo *", "bash -n *", "sh -n *"]
       },
       "action": "allow"
     },
