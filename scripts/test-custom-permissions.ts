@@ -24,7 +24,7 @@ function decideWithTighteners(tool: string, cmd: string | undefined) {
 interface TestCase {
 	tool: string
 	cmd?: string
-	expected: { action: Rule['action'] | 'ask'; source: 'user' | 'builtin' | 'default' }
+	expected: { action: Rule['action'] | 'ask'; source: 'custom' | 'user' | 'builtin' | 'default' }
 	note?: string
 }
 
@@ -115,6 +115,12 @@ const cases: TestCase[] = [
 	// bash -n / sh -n syntax check (non-destructive)
 	{ tool: 'Bash', cmd: 'bash -n ~/photoop-product/scripts/worktree-land.sh', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'sh -n ./script.sh', expected: { action: 'allow', source: 'user' } },
+	// npx eslint is a safe lint command
+	{ tool: 'Bash', cmd: 'npx eslint', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'npx eslint src --max-warnings=0', expected: { action: 'allow', source: 'custom' } },
+	// tmux capture-pane is read-only inspection of a tmux pane
+	{ tool: 'Bash', cmd: 'tmux capture-pane -p -t amp:0.0', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'tmux capture-pane', expected: { action: 'allow', source: 'custom' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },

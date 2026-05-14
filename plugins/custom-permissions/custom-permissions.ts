@@ -35,10 +35,22 @@ export interface Rule {
 export interface Decision {
 	action: Action
 	rule: Rule | null
-	source: 'user' | 'builtin' | 'default'
+	source: 'custom' | 'user' | 'builtin' | 'default'
 }
 
 const BUILTIN_RULES = builtinRulesData as Rule[]
+const CUSTOM_RULES: Rule[] = [
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['npx eslint', 'npx eslint *', 'npx --yes eslint', 'npx --yes eslint *'] },
+		action: 'allow',
+	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['tmux capture-pane', 'tmux capture-pane *'] },
+		action: 'allow',
+	},
+]
 const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
 
 let settingsCache: { mtimeMs: number; rules: Rule[] } | null = null
@@ -120,6 +132,11 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 
 function decideSingle(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined): Decision {
 	const normalizedCmd = cmd === undefined ? cmd : stripEnvPrefix(cmd)
+	for (const rule of CUSTOM_RULES) {
+		if (ruleMatches(rule, tool, normalizedCmd)) {
+			return { action: rule.action, rule, source: 'custom' }
+		}
+	}
 	for (const rule of userRules) {
 		if (ruleMatches(rule, tool, normalizedCmd)) {
 			return { action: rule.action, rule, source: 'user' }
