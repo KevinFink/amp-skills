@@ -45,13 +45,13 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	// shell_command tool (used by sub-agents/MCP) must hit the same user rules as Bash
-	{ tool: 'shell_command', cmd: "sed -n '1,140p' app/main.py && sed -n '320,380p' app/main.py", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "sed -n '1,140p' app/main.py && sed -n '320,380p' app/main.py", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'terraform plan -out=plan.tfplan', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
-	{ tool: 'Bash', cmd: "sed -n '470,580p' ~/photoop-infrastructure/terraform/environments/prod/main.tf", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: "sed -n '470,580p' ~/photoop-infrastructure/terraform/environments/prod/main.tf", expected: { action: 'allow', source: 'custom' } },
 	// AWS read-only verbs (single command and segmented multi-command)
 	{ tool: 'Bash', cmd: 'aws --profile photoop sqs list-queues --queue-name-prefix sbw-prod', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'aws ec2 describe-instances --region us-east-1', expected: { action: 'allow', source: 'user' } },
@@ -121,6 +121,19 @@ const cases: TestCase[] = [
 	// tmux capture-pane is read-only inspection of a tmux pane
 	{ tool: 'Bash', cmd: 'tmux capture-pane -p -t amp:0.0', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'tmux capture-pane', expected: { action: 'allow', source: 'custom' } },
+	// gh repo view is read-only repository metadata inspection
+	{ tool: 'Bash', cmd: 'gh repo view', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'gh repo view photoopapp/photoop-product --json name,owner', expected: { action: 'allow', source: 'custom' } },
+	// gh label list is read-only label metadata inspection
+	{ tool: 'Bash', cmd: 'gh label list', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'gh label list --repo photoopapp/photoop-product --limit 100', expected: { action: 'allow', source: 'custom' } },
+	// gh pr list is read-only pull request metadata inspection
+	{ tool: 'Bash', cmd: 'gh pr list', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'gh pr list --state all --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'custom' } },
+	// nl piped to sed -n is read-only file inspection with line numbers
+	{ tool: 'Bash', cmd: 'nl README.md', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },

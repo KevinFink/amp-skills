@@ -50,6 +50,26 @@ const CUSTOM_RULES: Rule[] = [
 		matches: { cmd: ['tmux capture-pane', 'tmux capture-pane *'] },
 		action: 'allow',
 	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['gh repo view', 'gh repo view *'] },
+		action: 'allow',
+	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['gh label list', 'gh label list *'] },
+		action: 'allow',
+	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['gh pr list', 'gh pr list *'] },
+		action: 'allow',
+	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ['nl', 'nl *', 'sed -n *'] },
+		action: 'allow',
+	},
 ]
 const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
 
@@ -114,17 +134,21 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 			// Multi-segment commands are evaluated per segment so that broad
 			// globs like `aws * list-*` or `echo *` cannot match across `;`,
 			// `\n`, `&&`, or `||` and smuggle a destructive segment through.
+			let sawCustom = false
 			let sawUser = false
 			for (const segment of segments) {
 				const segmentDecision = decideSingle(userRules, builtinRules, tool, segment)
 				if (segmentDecision.action !== 'allow') {
 					return segmentDecision
 				}
+				if (segmentDecision.source === 'custom') {
+					sawCustom = true
+				}
 				if (segmentDecision.source === 'user') {
 					sawUser = true
 				}
 			}
-			return { action: 'allow', rule: null, source: sawUser ? 'user' : 'builtin' }
+			return { action: 'allow', rule: null, source: sawCustom ? 'custom' : sawUser ? 'user' : 'builtin' }
 		}
 	}
 	return decideSingle(userRules, builtinRules, tool, cmd)
