@@ -70,6 +70,11 @@ const CUSTOM_RULES: Rule[] = [
 		matches: { cmd: ['nl', 'nl *', 'sed -n *'] },
 		action: 'allow',
 	},
+	{
+		tool: '/^(Bash|shell_command)$/',
+		matches: { cmd: ["/^curl -k -s https:\\/\\/([A-Za-z0-9-]+\\.)*sandwichboard\\.ai\\/[A-Za-z0-9._~:\\/?#[\\]@!$&'()*+,;=%-]*$/"] },
+		action: 'allow',
+	},
 ]
 const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
 

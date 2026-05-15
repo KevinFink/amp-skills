@@ -134,6 +134,12 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'nl README.md', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
+	// Fixed curl GET piped to rg is read-only inspection of the admin marketing page
+	{ tool: 'Bash', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status?check=1', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'curl -k -s https://example.com/status', expected: { action: 'ask', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status > output.html', expected: { action: 'ask', source: 'builtin' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },
