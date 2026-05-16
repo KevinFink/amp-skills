@@ -143,6 +143,9 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status?check=1', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'curl -k -s https://example.com/status', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status > output.html', expected: { action: 'ask', source: 'builtin' } },
+	// SandwichBoard worktree helper is an approved local workflow script
+	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/scripts/worktree-start.sh sandwichboard-backend 456', expected: { action: 'allow', source: 'user' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },

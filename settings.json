@@ -133,6 +133,13 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["~/SandwichBoard/scripts/worktree-start.sh *", "/home/ec2-user/SandwichBoard/scripts/worktree-start.sh *"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["~/photoop-backend/scripts/local_psql.sh", "~/photoop-backend/scripts/local_psql.sh *", "/home/ec2-user/photoop-backend/scripts/local_psql.sh", "/home/ec2-user/photoop-backend/scripts/local_psql.sh *"]
       },
       "action": "allow"
