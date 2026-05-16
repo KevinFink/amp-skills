@@ -121,6 +121,9 @@ const cases: TestCase[] = [
 	// tmux capture-pane is read-only inspection of a tmux pane
 	{ tool: 'Bash', cmd: 'tmux capture-pane -p -t amp:0.0', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'tmux capture-pane', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'tmux capture-pane -p -S -120 -t RIGHT:sbw-discovery 2>&1 || true', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'tmux list-windows', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'tmux list-windows -t RIGHT', expected: { action: 'allow', source: 'custom' } },
 	// gh repo view is read-only repository metadata inspection
 	{ tool: 'Bash', cmd: 'gh repo view', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'gh repo view photoopapp/photoop-product --json name,owner', expected: { action: 'allow', source: 'custom' } },

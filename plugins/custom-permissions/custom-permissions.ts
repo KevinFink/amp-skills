@@ -47,7 +47,7 @@ const CUSTOM_RULES: Rule[] = [
 	},
 	{
 		tool: '/^(Bash|shell_command)$/',
-		matches: { cmd: ['tmux capture-pane', 'tmux capture-pane *'] },
+		matches: { cmd: ['tmux capture-pane', 'tmux capture-pane *', 'tmux list-windows', 'tmux list-windows *'] },
 		action: 'allow',
 	},
 	{
