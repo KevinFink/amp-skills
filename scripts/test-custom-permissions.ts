@@ -100,6 +100,8 @@ const cases: TestCase[] = [
 	// Bare read-only utilities (commonly used as pipe sinks)
 	{ tool: 'Bash', cmd: 'grep -rln "ingestion_queue\\|_ingestion_queue_url\\|sandwichboard.*ingest\\|receive_message" ~/photoop-backend/ --include="*.py" 2>/dev/null | head', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "ls -R admin | sed -e 's/.*//g' | head && rg --files admin js css", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "sed -e 's/a/b/w out.txt' README.md", expected: { action: 'ask', source: 'default' }, note: 'user rule allows sed -e; tightener asks because script writes a file' },
 	// rg/sort with args (no builtin allow, only `rg -<flags>` is allowed by builtin regex)
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
