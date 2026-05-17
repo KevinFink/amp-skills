@@ -148,6 +148,10 @@ const cases: TestCase[] = [
 	// SandwichBoard worktree helper is an approved local workflow script
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/scripts/worktree-start.sh sandwichboard-backend 456', expected: { action: 'allow', source: 'user' } },
+	// SandwichBoard dev-server status is read-only; start/stop operations should still prompt.
+	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --stop', expected: { action: 'ask', source: 'builtin' } },
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },
