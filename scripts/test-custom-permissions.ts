@@ -97,6 +97,8 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'ls admin/ && ls admin/ingestion 2>/dev/null || true', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'true', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'false', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'sleep 20', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'sleep 20; tmux capture-pane -p -S -200 -t "sbw-scoring-cleanup" | tail -80', expected: { action: 'allow', source: 'custom' } },
 	// Bare read-only utilities (commonly used as pipe sinks)
 	{ tool: 'Bash', cmd: 'grep -rln "ingestion_queue\\|_ingestion_queue_url\\|sandwichboard.*ingest\\|receive_message" ~/photoop-backend/ --include="*.py" 2>/dev/null | head', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },

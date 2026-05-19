@@ -21,6 +21,13 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["sleep", "sleep *"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *", "jq", "jq *", "pgrep", "pgrep *"]
       },
       "action": "allow"
