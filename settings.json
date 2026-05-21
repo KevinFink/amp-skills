@@ -154,7 +154,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["~/photoop-backend/scripts/local_psql.sh", "~/photoop-backend/scripts/local_psql.sh *", "/home/ec2-user/photoop-backend/scripts/local_psql.sh", "/home/ec2-user/photoop-backend/scripts/local_psql.sh *"]
+        "cmd": ["./scripts/local_psql.sh", "./scripts/local_psql.sh *", "~/photoop-backend/scripts/local_psql.sh", "~/photoop-backend/scripts/local_psql.sh *", "/home/ec2-user/photoop-backend/scripts/local_psql.sh", "/home/ec2-user/photoop-backend/scripts/local_psql.sh *", "~/sandwichboard-backend/scripts/local_psql.sh", "~/sandwichboard-backend/scripts/local_psql.sh *", "/home/ec2-user/sandwichboard-backend/scripts/local_psql.sh", "/home/ec2-user/sandwichboard-backend/scripts/local_psql.sh *", "~/sandwichboard-workflow/scripts/local_psql.sh", "~/sandwichboard-workflow/scripts/local_psql.sh *", "/home/ec2-user/sandwichboard-workflow/scripts/local_psql.sh", "/home/ec2-user/sandwichboard-workflow/scripts/local_psql.sh *"]
       },
       "action": "allow"
     }

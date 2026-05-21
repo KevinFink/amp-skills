@@ -177,7 +177,13 @@ function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDeci
 }
 
 function isLocalPsqlScript(path: string): boolean {
-	return path === '~/photoop-backend/scripts/local_psql.sh' || path === '/home/ec2-user/photoop-backend/scripts/local_psql.sh'
+	return path === './scripts/local_psql.sh'
+		|| path === '~/photoop-backend/scripts/local_psql.sh'
+		|| path === '/home/ec2-user/photoop-backend/scripts/local_psql.sh'
+		|| path === '~/sandwichboard-backend/scripts/local_psql.sh'
+		|| path === '/home/ec2-user/sandwichboard-backend/scripts/local_psql.sh'
+		|| path === '~/sandwichboard-workflow/scripts/local_psql.sh'
+		|| path === '/home/ec2-user/sandwichboard-workflow/scripts/local_psql.sh'
 }
 
 function evaluateLocalPsql(args: string[]): TightenerDecision {

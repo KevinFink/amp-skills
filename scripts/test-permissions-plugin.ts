@@ -47,8 +47,13 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: '~/photoop-backend/scripts/local_psql.sh', expected: 'allow' },
 	{ command: '~/photoop-backend/scripts/local_psql.sh -c "SELECT version()"', expected: 'allow' },
 	{ command: '/home/ec2-user/photoop-backend/scripts/local_psql.sh -c "SELECT 1"', expected: 'allow' },
+	{ command: './scripts/local_psql.sh -c "SELECT 1"', expected: 'allow' },
+	{ command: '~/sandwichboard-backend/scripts/local_psql.sh -c "SELECT 1"', expected: 'allow' },
+	{ command: '/home/ec2-user/sandwichboard-workflow/scripts/local_psql.sh -c "SELECT 1"', expected: 'allow' },
 	{ command: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE users SET ..."', expected: 'ask' },
 	{ command: '/home/ec2-user/photoop-backend/scripts/local_psql.sh --write', expected: 'ask' },
+	{ command: './scripts/local_psql.sh --write -c "UPDATE users SET ..."', expected: 'ask' },
+	{ command: '~/sandwichboard-backend/scripts/local_psql.sh --write', expected: 'ask' },
 	// git worktree: allowed broadly, but plugin asks before remove
 	{ command: 'git worktree list', expected: 'allow' },
 	{ command: 'git worktree add ../wt main', expected: 'allow' },
