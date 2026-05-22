@@ -11,13 +11,21 @@ const builtinRules = JSON.parse(readFileSync(resolve(repoRoot, 'plugins/custom-p
 
 // Mirror the plugin's combined logic: rule cascade + heuristic tighteners.
 function decideWithTighteners(tool: string, cmd: string | undefined, message?: string) {
+	const normalizedMessage = message?.toLowerCase()
 	const decision = decide(
 		userRules,
 		builtinRules,
 		tool,
 		cmd,
-		message === undefined ? undefined : { message, gitCommitRequested: /\b(commit|committing|land|landing|ship|shipping)\b/.test(message.toLowerCase()) },
+		message === undefined ? undefined : {
+			message,
+			gitCommitRequested: /\b(commit|committing|land|landing|ship|shipping)\b/.test(normalizedMessage ?? ''),
+			gitLandingRequested: /\b(land|landing|ship|shipping|confirmed|confirm|approved|approve|yes|go ahead)\b/.test(normalizedMessage ?? ''),
+		},
 	)
+	if (decision.action === 'allow' && decision.source === 'custom') {
+		return decision
+	}
 	if (decision.action === 'allow' && cmd !== undefined) {
 		const tightened = evaluateShellCommand(cmd)
 		if (tightened.kind === 'ask') {
@@ -42,6 +50,10 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'git commit -m "update"', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: 'git commit -m "update"', message: 'Please commit these changes', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo add foo && git -C ~/repo commit -m "update"', message: 'ship it', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git push origin develop', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git -C ~/repo merge --ff-only feature', message: 'land it', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git -C ~/repo worktree remove ../wt', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git push origin develop', message: 'status?', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',

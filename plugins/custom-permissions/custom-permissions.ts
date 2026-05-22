@@ -41,6 +41,7 @@ export interface Decision {
 interface TurnIntent {
 	message: string
 	gitCommitRequested: boolean
+	gitLandingRequested: boolean
 }
 
 const BUILTIN_RULES = builtinRulesData as Rule[]
@@ -110,6 +111,7 @@ export default function (amp: PluginAPI) {
 		turnIntents.set(event.thread.id, {
 			message: event.message,
 			gitCommitRequested: isExplicitGitCommitRequest(event.message),
+			gitLandingRequested: isExplicitGitLandingRequest(event.message),
 		})
 	})
 
@@ -157,6 +159,10 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 		return { action: 'ask', rule: null, source: 'default' }
 	}
 
+	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && turnIntent?.gitLandingRequested && gitLandingCommandRequested(cmd)) {
+		return { action: 'allow', rule: null, source: 'custom' }
+	}
+
 	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined) {
 		const segments = splitShellSegments(cmd)
 		if (segments.length > 1) {
@@ -196,6 +202,27 @@ function isExplicitGitCommitRequest(message: string): boolean {
 	const normalized = message.trim().toLowerCase()
 	return /\b(commit|committing|land|landing|ship|shipping)\b/.test(normalized)
 		&& !/\b(do not|don't|dont|without|avoid|skip)\s+(?:git\s+)?commit\b/.test(normalized)
+}
+
+function isExplicitGitLandingRequest(message: string): boolean {
+	const normalized = message.trim().toLowerCase()
+	return /\b(land|landing|ship|shipping|confirmed|confirm|approved|approve|yes|go ahead)\b/.test(normalized)
+		&& !/\b(do not|don't|dont|without|avoid|skip)\s+(?:land|landing|ship|shipping|push|merge|cleanup|clean up)\b/.test(normalized)
+}
+
+function gitLandingCommandRequested(cmd: string): boolean {
+	const segments = splitShellSegments(cmd)
+	return segments.some((segment) => {
+		const tokens = tokenizeSimpleShell(segment)
+		const git = parseGitCommand(tokens)
+		if (!git) {
+			return false
+		}
+		if (git.subcommand === 'push' || git.subcommand === 'pull' || git.subcommand === 'fetch' || git.subcommand === 'rebase' || git.subcommand === 'merge' || git.subcommand === 'checkout') {
+			return true
+		}
+		return git.subcommand === 'worktree' && git.args[0] === 'remove'
+	})
 }
 
 function tokenizeSimpleShell(segment: string): string[] {
@@ -238,7 +265,7 @@ function tokenizeSimpleShell(segment: string): string[] {
 	return tokens
 }
 
-function parseGitCommand(tokens: string[]): { subcommand: string } | null {
+function parseGitCommand(tokens: string[]): { subcommand: string; args: string[] } | null {
 	let index = 0
 	while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
 		index += 1
@@ -257,7 +284,7 @@ function parseGitCommand(tokens: string[]): { subcommand: string } | null {
 			index += 1
 			continue
 		}
-		return { subcommand: token }
+		return { subcommand: token, args: tokens.slice(index + 1) }
 	}
 	return null
 }
