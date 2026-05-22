@@ -283,6 +283,9 @@ function evaluateAmp(args: string[]): TightenerDecision {
 	if (subcommand === 'plugins' && args.includes('list')) {
 		return { kind: 'allow', reason: 'amp plugins list only lists installed plugins.' }
 	}
+	if (subcommand === 'plugins' && args.includes('show-docs')) {
+		return { kind: 'allow', reason: 'amp plugins show-docs only displays plugin documentation.' }
+	}
 
 	return { kind: 'allow', reason: 'Command is not a guarded amp command.' }
 }

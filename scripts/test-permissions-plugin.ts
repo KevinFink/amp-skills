@@ -5,6 +5,7 @@ type ExpectedDecision = 'allow' | 'ask'
 const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: 'git status --short', expected: 'allow' },
 	{ command: 'amp plugins list', expected: 'allow' },
+	{ command: 'amp plugins show-docs', expected: 'allow' },
 	{ command: 'terraform validate', expected: 'allow' },
 	{ command: 'npx html-validate index.html src/page.html', expected: 'allow' },
 	{ command: "sed -n '1,80p' README.md", expected: 'allow' },

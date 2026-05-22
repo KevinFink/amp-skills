@@ -70,7 +70,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["amp permissions --help", "amp permissions list", "amp permissions list *", "amp permissions test", "amp permissions test *"]
+        "cmd": ["amp permissions --help", "amp permissions list", "amp permissions list *", "amp permissions test", "amp permissions test *", "amp plugins show-docs", "amp plugins show-docs *"]
       },
       "action": "allow"
     },
@@ -106,13 +106,6 @@
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["cd", "cd *"]
-      },
-      "action": "allow"
-    },
-    {
-      "tool": "/^(Bash|shell_command)$/",
-      "matches": {
-        "cmd": ["git add", "git add *"]
       },
       "action": "allow"
     },

@@ -64,6 +64,11 @@ cascade allows but a tightener returns `ask`, the plugin still prompts (e.g.,
 `find -delete`). This way there's a single plugin and a single confirm
 modal — no double-prompts.
 
+The plugin also records the current `agent.start` message and treats `git add`
+and `git commit` as context-sensitive: they prompt by default, but are allowed
+automatically during turns where the user explicitly asked to commit/land/ship
+the current work.
+
 ## Risks
 
 - **Drift.** Built-in rules change between Amp versions. Re-run

@@ -10,8 +10,14 @@ const userRules = (settings['amp.permissions'] as Rule[] | undefined) ?? []
 const builtinRules = JSON.parse(readFileSync(resolve(repoRoot, 'plugins/custom-permissions/builtin-rules.json'), 'utf8')) as Rule[]
 
 // Mirror the plugin's combined logic: rule cascade + heuristic tighteners.
-function decideWithTighteners(tool: string, cmd: string | undefined) {
-	const decision = decide(userRules, builtinRules, tool, cmd)
+function decideWithTighteners(tool: string, cmd: string | undefined, message?: string) {
+	const decision = decide(
+		userRules,
+		builtinRules,
+		tool,
+		cmd,
+		message === undefined ? undefined : { message, gitCommitRequested: /\b(commit|committing|land|landing|ship|shipping)\b/.test(message.toLowerCase()) },
+	)
 	if (decision.action === 'allow' && cmd !== undefined) {
 		const tightened = evaluateShellCommand(cmd)
 		if (tightened.kind === 'ask') {
@@ -24,13 +30,18 @@ function decideWithTighteners(tool: string, cmd: string | undefined) {
 interface TestCase {
 	tool: string
 	cmd?: string
+	message?: string
 	expected: { action: Rule['action'] | 'ask'; source: 'custom' | 'user' | 'builtin' | 'default' }
 	note?: string
 }
 
 const cases: TestCase[] = [
 	// User rules from settings.json win over built-in
-	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
+	{ tool: 'Bash', cmd: 'git add foo', message: 'commit', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git commit -m "update"', expected: { action: 'ask', source: 'default' } },
+	{ tool: 'Bash', cmd: 'git commit -m "update"', message: 'Please commit these changes', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git -C ~/repo add foo && git -C ~/repo commit -m "update"', message: 'ship it', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',
@@ -41,6 +52,8 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'gh run view 25608940296 --repo PhotoOpApp/photoop-infrastructure --log-failed 2>&1 | head -200', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'gh run view 25608940296 --repo PhotoOpApp/photoop-infrastructure --log-failed 2>&1 | head -200', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'amp plugins show-docs', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'amp plugins show-docs custom-permissions', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product 2>&1', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
@@ -217,7 +230,7 @@ const cases: TestCase[] = [
 
 let failures = 0
 for (const c of cases) {
-	const decision = decideWithTighteners(c.tool, c.cmd)
+	const decision = decideWithTighteners(c.tool, c.cmd, c.message)
 	const ok = decision.action === c.expected.action && decision.source === c.expected.source
 	if (!ok) {
 		failures += 1

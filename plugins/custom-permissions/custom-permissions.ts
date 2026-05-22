@@ -38,6 +38,11 @@ export interface Decision {
 	source: 'custom' | 'user' | 'builtin' | 'default'
 }
 
+interface TurnIntent {
+	message: string
+	gitCommitRequested: boolean
+}
+
 const BUILTIN_RULES = builtinRulesData as Rule[]
 const CUSTOM_RULES: Rule[] = [
 	{
@@ -79,6 +84,7 @@ const CUSTOM_RULES: Rule[] = [
 const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
 
 let settingsCache: { mtimeMs: number; rules: Rule[] } | null = null
+const turnIntents = new Map<string, TurnIntent>()
 
 function loadUserRules(): Rule[] {
 	if (!existsSync(SETTINGS_PATH)) {
@@ -100,11 +106,22 @@ function loadUserRules(): Rule[] {
 }
 
 export default function (amp: PluginAPI) {
+	amp.on('agent.start', (event) => {
+		turnIntents.set(event.thread.id, {
+			message: event.message,
+			gitCommitRequested: isExplicitGitCommitRequest(event.message),
+		})
+	})
+
+	amp.on('agent.end', (event) => {
+		turnIntents.delete(event.thread.id)
+	})
+
 	amp.on('tool.call', async (event, ctx): Promise<ToolCallResult> => {
 		const userRules = loadUserRules()
 
 		const cmd = amp.helpers.shellCommandFromToolCall(event)?.command
-		let decision = decide(userRules, BUILTIN_RULES, event.tool, cmd)
+		let decision = decide(userRules, BUILTIN_RULES, event.tool, cmd, turnIntents.get(event.thread.id))
 
 		// Even if the rule cascade allows, run heuristic tighteners on shell
 		// commands so things like `sed -i`, `python -c`, `git worktree remove`,
@@ -132,7 +149,14 @@ export default function (amp: PluginAPI) {
 	})
 }
 
-export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined): Decision {
+export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined, turnIntent?: TurnIntent): Decision {
+	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && gitStagingOrCommitRequested(cmd)) {
+		if (turnIntent?.gitCommitRequested) {
+			return { action: 'allow', rule: null, source: 'custom' }
+		}
+		return { action: 'ask', rule: null, source: 'default' }
+	}
+
 	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined) {
 		const segments = splitShellSegments(cmd)
 		if (segments.length > 1) {
@@ -157,6 +181,85 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 		}
 	}
 	return decideSingle(userRules, builtinRules, tool, cmd)
+}
+
+function gitStagingOrCommitRequested(cmd: string): boolean {
+	const segments = splitShellSegments(cmd)
+	return segments.some((segment) => {
+		const tokens = tokenizeSimpleShell(segment)
+		const git = parseGitCommand(tokens)
+		return git?.subcommand === 'add' || git?.subcommand === 'commit'
+	})
+}
+
+function isExplicitGitCommitRequest(message: string): boolean {
+	const normalized = message.trim().toLowerCase()
+	return /\b(commit|committing|land|landing|ship|shipping)\b/.test(normalized)
+		&& !/\b(do not|don't|dont|without|avoid|skip)\s+(?:git\s+)?commit\b/.test(normalized)
+}
+
+function tokenizeSimpleShell(segment: string): string[] {
+	const tokens: string[] = []
+	let current = ''
+	let quote: 'single' | 'double' | null = null
+	let escaped = false
+
+	for (const char of segment) {
+		if (escaped) {
+			current += char
+			escaped = false
+			continue
+		}
+		if (char === '\\' && quote !== 'single') {
+			escaped = true
+			continue
+		}
+		if (char === "'" && quote !== 'double') {
+			quote = quote === 'single' ? null : 'single'
+			continue
+		}
+		if (char === '"' && quote !== 'single') {
+			quote = quote === 'double' ? null : 'double'
+			continue
+		}
+		if (!quote && /\s/.test(char)) {
+			if (current) {
+				tokens.push(current)
+				current = ''
+			}
+			continue
+		}
+		current += char
+	}
+
+	if (current) {
+		tokens.push(current)
+	}
+	return tokens
+}
+
+function parseGitCommand(tokens: string[]): { subcommand: string } | null {
+	let index = 0
+	while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
+		index += 1
+	}
+	if (tokens[index] !== 'git') {
+		return null
+	}
+	index += 1
+	while (index < tokens.length) {
+		const token = tokens[index]
+		if (token === '-C' || token === '-c') {
+			index += 2
+			continue
+		}
+		if (token.startsWith('-')) {
+			index += 1
+			continue
+		}
+		return { subcommand: token }
+	}
+	return null
 }
 
 function decideSingle(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined): Decision {
