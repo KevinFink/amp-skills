@@ -45,6 +45,14 @@ bun run scripts/test-custom-permissions.ts   # cascade + segment tests
 bun run scripts/test-permissions-plugin.ts   # tightener heuristics tests
 ```
 
+To audit an existing Amp thread for tool calls that would have required a
+permission confirmation under these rules:
+
+```bash
+bun run scripts/analyze-thread-confirmations.ts T-019e50b7-d696-716e-bfde-f4482f809e6d
+bun run scripts/analyze-thread-confirmations.ts <thread-id-or-url> --json
+```
+
 ### skills/ast-grep
 
 A skill for writing [ast-grep](https://ast-grep.github.io/) rules to perform structural code search, analysis, and rewriting. Translates natural-language queries into AST-pattern rules, tests them, and runs them against a codebase.
