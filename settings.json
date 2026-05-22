@@ -35,6 +35,13 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["cmp -s *", "systemctl list-units *", "systemctl list-unit-files *", "systemctl is-active", "systemctl is-active *", "curl -fsS http://localhost:*", "curl -fsS http://127.0.0.1:*"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["tmux capture-pane", "tmux capture-pane *", "tmux list-windows", "tmux list-windows *"]
       },
       "action": "allow"

@@ -103,6 +103,12 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'false', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'sleep 20', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'sleep 20; tmux capture-pane -p -S -200 -t "sbw-scoring-cleanup" | tail -80', expected: { action: 'allow', source: 'custom' } },
+	// Read-only service/local health inspection
+	{ tool: 'Bash', cmd: 'cmp -s templates/report-image.html templates/report-image-email.html && echo identical', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "systemctl list-units --type=service --all --no-pager | rg -i 'sandwich|workflow|worker|openresty|nginx'", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "systemctl list-unit-files --type=service --no-pager | rg -i 'sandwich|workflow|worker|openresty|nginx'", expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'systemctl is-active openresty sandwichboard-backend', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'curl -fsS http://localhost:8090/healthz || true', expected: { action: 'allow', source: 'user' } },
 	// Bare read-only utilities (commonly used as pipe sinks)
 	{ tool: 'Bash', cmd: 'grep -rln "ingestion_queue\\|_ingestion_queue_url\\|sandwichboard.*ingest\\|receive_message" ~/photoop-backend/ --include="*.py" 2>/dev/null | head', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
