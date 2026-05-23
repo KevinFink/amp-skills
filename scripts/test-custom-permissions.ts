@@ -53,6 +53,8 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'git push origin develop', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo merge --ff-only feature', message: 'land it', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo worktree remove ../wt', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-land.sh sandwichboard-backend 188 -m "Add campaign QA dashboard API"', message: 'yes', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: '/home/ec2-user/photoop-product/scripts/worktree-land.sh photoop-backend 188 -m "Land issue 188"', message: 'go ahead', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git push origin develop', message: 'status?', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend', expected: { action: 'allow', source: 'user' } },
 	{
@@ -185,6 +187,7 @@ const cases: TestCase[] = [
 	// SandwichBoard worktree helper is an approved local workflow script
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/scripts/worktree-start.sh sandwichboard-backend 456', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-land.sh SandwichBoard 123 -m "Land issue"', expected: { action: 'ask', source: 'builtin' } },
 	// SandwichBoard dev-server status is read-only; start/stop operations should still prompt.
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s', expected: { action: 'allow', source: 'user' } },

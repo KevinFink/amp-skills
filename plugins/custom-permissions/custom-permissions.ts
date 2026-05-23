@@ -163,6 +163,10 @@ export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cm
 		return { action: 'allow', rule: null, source: 'custom' }
 	}
 
+	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && turnIntent?.gitLandingRequested && worktreeLandingScriptRequested(cmd)) {
+		return { action: 'allow', rule: null, source: 'custom' }
+	}
+
 	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined) {
 		const segments = splitShellSegments(cmd)
 		if (segments.length > 1) {
@@ -222,6 +226,18 @@ function gitLandingCommandRequested(cmd: string): boolean {
 			return true
 		}
 		return git.subcommand === 'worktree' && git.args[0] === 'remove'
+	})
+}
+
+function worktreeLandingScriptRequested(cmd: string): boolean {
+	const segments = splitShellSegments(cmd)
+	return segments.some((segment) => {
+		const tokens = tokenizeSimpleShell(segment)
+		const script = tokens[0]
+		return script === '~/photoop-product/scripts/worktree-land.sh'
+			|| script === '/home/ec2-user/photoop-product/scripts/worktree-land.sh'
+			|| script === '~/SandwichBoard/scripts/worktree-land.sh'
+			|| script === '/home/ec2-user/SandwichBoard/scripts/worktree-land.sh'
 	})
 }
 
