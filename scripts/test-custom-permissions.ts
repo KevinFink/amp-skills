@@ -146,6 +146,8 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'cd ~/photoop-backend && rg -h "^from app\\." app/services/foo.py 2>&1 | sort -u', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'echo a | sort | uniq -c', expected: { action: 'allow', source: 'user' } },
 	// git -C <dir> read-only verbs
+	{ tool: 'Bash', cmd: "sed -n '1,140p' AGENTS.md 2>/dev/null || true && git status --short", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git status --short', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',
 		cmd: 'git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 status --short --branch && git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 log --oneline -3',
