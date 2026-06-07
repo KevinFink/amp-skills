@@ -69,6 +69,14 @@ and `git commit` as context-sensitive: they prompt by default, but are allowed
 automatically during turns where the user explicitly asked to commit/land/ship
 the current work.
 
+## Thread title status
+
+While the plugin is waiting on its permission prompt, it temporarily prepends
+`⚠️` to the current thread title using `amp threads rename`. The prefix is
+removed as soon as the prompt resolves, including after approval, rejection, or
+plugin UI failure. This makes permission-waiting threads easier to spot in
+thread lists and global/web views.
+
 ## Risks
 
 - **Drift.** Built-in rules change between Amp versions. Re-run

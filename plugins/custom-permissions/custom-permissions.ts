@@ -19,7 +19,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { PluginAPI, ToolCallResult } from '@ampcode/plugin'
+import type { PluginAPI, PluginThread, ThreadID, ToolCallResult } from '@ampcode/plugin'
 import builtinRulesData from './builtin-rules.json' with { type: 'json' }
 import { evaluateShellCommand } from './tighteners'
 
@@ -38,7 +38,7 @@ export interface Decision {
 	source: 'custom' | 'user' | 'builtin' | 'default'
 }
 
-interface TurnIntent {
+export interface TurnIntent {
 	message: string
 	gitCommitRequested: boolean
 	gitLandingRequested: boolean
@@ -83,9 +83,12 @@ const CUSTOM_RULES: Rule[] = [
 	},
 ]
 const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
+const TITLE_STATUS_PREFIXES = ['⚠️']
+const WAITING_ON_PERMISSIONS_PREFIX = '⚠️'
 
 let settingsCache: { mtimeMs: number; rules: Rule[] } | null = null
 const turnIntents = new Map<string, TurnIntent>()
+const permissionTitleStatuses = new Map<string, { count: number; queue: Promise<void> }>()
 
 function loadUserRules(): Rule[] {
 	if (!existsSync(SETTINGS_PATH)) {
@@ -108,11 +111,7 @@ function loadUserRules(): Rule[] {
 
 export default function (amp: PluginAPI) {
 	amp.on('agent.start', (event) => {
-		turnIntents.set(event.thread.id, {
-			message: event.message,
-			gitCommitRequested: isExplicitGitCommitRequest(event.message),
-			gitLandingRequested: isExplicitGitLandingRequest(event.message),
-		})
+		turnIntents.set(event.thread.id, buildTurnIntent(event.message))
 	})
 
 	amp.on('agent.end', (event) => {
@@ -120,20 +119,8 @@ export default function (amp: PluginAPI) {
 	})
 
 	amp.on('tool.call', async (event, ctx): Promise<ToolCallResult> => {
-		const userRules = loadUserRules()
-
 		const cmd = amp.helpers.shellCommandFromToolCall(event)?.command
-		let decision = decide(userRules, BUILTIN_RULES, event.tool, cmd, turnIntents.get(event.thread.id))
-
-		// Even if the rule cascade allows, run heuristic tighteners on shell
-		// commands so things like `sed -i`, `python -c`, `git worktree remove`,
-		// or `local_psql.sh --write` still prompt.
-		if (decision.action === 'allow' && cmd !== undefined) {
-			const tightened = evaluateShellCommand(cmd)
-			if (tightened.kind === 'ask') {
-				decision = { action: 'ask', rule: null, source: 'default' }
-			}
-		}
+		const decision = classifyPermissionDecision(event.tool, cmd, turnIntents.get(event.thread.id))
 
 		if (decision.action === 'allow') {
 			return { action: 'allow' }
@@ -147,8 +134,32 @@ export default function (amp: PluginAPI) {
 		}
 
 		// 'ask', 'delegate' (delegate not implemented), or no match: prompt the user.
-		return await askUser(ctx, event.tool, cmd, decision)
+		return await askUser(amp, ctx, event.thread.id, event.tool, cmd, decision)
 	})
+}
+
+export function buildTurnIntent(message: string): TurnIntent {
+	return {
+		message,
+		gitCommitRequested: isExplicitGitCommitRequest(message),
+		gitLandingRequested: isExplicitGitLandingRequest(message),
+	}
+}
+
+export function classifyPermissionDecision(tool: string, cmd: string | undefined, turnIntent?: TurnIntent): Decision {
+	let decision = decide(loadUserRules(), BUILTIN_RULES, tool, cmd, turnIntent)
+
+	// Even if the rule cascade allows, run heuristic tighteners on shell
+	// commands so things like `sed -i`, `python -c`, `git worktree remove`,
+	// or `local_psql.sh --write` still prompt.
+	if (decision.action === 'allow' && cmd !== undefined) {
+		const tightened = evaluateShellCommand(cmd)
+		if (tightened.kind === 'ask') {
+			decision = { action: 'ask', rule: null, source: 'default' }
+		}
+	}
+
+	return decision
 }
 
 export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined, turnIntent?: TurnIntent): Decision {
@@ -460,7 +471,9 @@ function globToRegExp(pattern: string): RegExp {
 }
 
 async function askUser(
+	amp: PluginAPI,
 	ctx: Parameters<Parameters<PluginAPI['on']>[1]>[1],
+	threadID: ThreadID,
 	tool: string,
 	cmd: string | undefined,
 	decision: Decision,
@@ -471,6 +484,7 @@ async function askUser(
 		`Source: ${decision.source}${decision.rule ? ` (action=${decision.rule.action})` : ''}`,
 	].filter(Boolean) as string[]
 
+	markWaitingOnPermissions(amp, ctx.thread, threadID)
 	try {
 		const approved = await ctx.ui.confirm({
 			title: `Approve ${tool}?`,
@@ -480,14 +494,167 @@ async function askUser(
 		if (approved) {
 			return { action: 'allow' }
 		}
+
+		let rejectionComment: string | undefined
+		try {
+			rejectionComment = await ctx.ui.input({
+				title: `Why reject ${tool}?`,
+				helpText: 'Optional. This feedback will be returned to the agent so it can adjust its next step.',
+				submitButtonText: 'Reject',
+			})
+		} catch {
+			// If the follow-up input is unavailable, still reject the original
+			// tool call rather than losing the user's denial.
+		}
+
+		const trimmedComment = rejectionComment?.trim()
 		return {
 			action: 'reject-and-continue',
-			message: 'User rejected the tool call via custom permissions plugin.',
+			message: trimmedComment
+				? `User rejected the tool call via custom permissions plugin.\n\nUser feedback: ${trimmedComment}`
+				: 'User rejected the tool call via custom permissions plugin.',
 		}
 	} catch (error) {
 		return {
 			action: 'reject-and-continue',
 			message: `Plugin UI unavailable; rejecting ${tool} per safe-by-default policy.`,
 		}
+	} finally {
+		clearWaitingOnPermissions(amp, ctx.thread, threadID)
+	}
+}
+
+function markWaitingOnPermissions(amp: PluginAPI, thread: PluginThread, threadID: ThreadID): void {
+	const key = threadID.toString()
+	const active = permissionTitleStatuses.get(key)
+	if (active) {
+		const wasInactive = active.count === 0
+		active.count += 1
+		if (wasInactive) {
+			enqueueTitleStatusOperation(amp, key, active, async () => {
+				await applyWaitingOnPermissionsTitle(amp, thread, threadID, key, active)
+			})
+		}
+		return
+	}
+
+	const status = { count: 1, queue: Promise.resolve() }
+	permissionTitleStatuses.set(key, status)
+	enqueueTitleStatusOperation(amp, key, status, async () => {
+		await applyWaitingOnPermissionsTitle(amp, thread, threadID, key, status)
+	})
+}
+
+
+async function applyWaitingOnPermissionsTitle(
+	amp: PluginAPI,
+	thread: PluginThread,
+	threadID: ThreadID,
+	key: string,
+	status: { count: number; queue: Promise<void> },
+): Promise<void> {
+	if (permissionTitleStatuses.get(key) !== status || status.count === 0) {
+		return
+	}
+
+	const title = await getThreadTitle(thread)
+	if (!title) {
+		return
+	}
+	if (permissionTitleStatuses.get(key) !== status || status.count === 0) {
+		return
+	}
+
+	const titleWithoutStatus = stripKnownTitleStatuses(title)
+	const flaggedTitle = `${WAITING_ON_PERMISSIONS_PREFIX} ${titleWithoutStatus}`
+	if (title !== flaggedTitle) {
+		await renameThread(amp, threadID, flaggedTitle)
+	}
+}
+
+function clearWaitingOnPermissions(amp: PluginAPI, thread: PluginThread, threadID: ThreadID): void {
+	const key = threadID.toString()
+	const active = permissionTitleStatuses.get(key)
+	if (!active) {
+		return
+	}
+	if (active.count > 1) {
+		active.count -= 1
+		return
+	}
+	active.count = 0
+	enqueueTitleStatusOperation(amp, key, active, async () => {
+		await clearWaitingOnPermissionsTitle(amp, thread, threadID, key, active)
+	})
+}
+
+
+async function clearWaitingOnPermissionsTitle(
+	amp: PluginAPI,
+	thread: PluginThread,
+	threadID: ThreadID,
+	key: string,
+	status: { count: number; queue: Promise<void> },
+): Promise<void> {
+	if (permissionTitleStatuses.get(key) !== status || status.count > 0) {
+		return
+	}
+
+	const title = await getThreadTitle(thread)
+	if (!title) {
+		if (permissionTitleStatuses.get(key) === status && status.count === 0) {
+			permissionTitleStatuses.delete(key)
+		}
+		return
+	}
+
+	const titleWithoutStatus = stripKnownTitleStatuses(title)
+	if (titleWithoutStatus !== title) {
+		await renameThread(amp, threadID, titleWithoutStatus)
+	}
+	if (permissionTitleStatuses.get(key) === status && status.count === 0) {
+		permissionTitleStatuses.delete(key)
+	}
+}
+
+function enqueueTitleStatusOperation(
+	amp: PluginAPI,
+	key: string,
+	status: { count: number; queue: Promise<void> },
+	operation: () => Promise<void>,
+): void {
+	status.queue = status.queue.then(operation).catch((error) => {
+		amp.logger.log(`Thread title status update failed for ${key}: ${error instanceof Error ? error.message : String(error)}`)
+	})
+}
+
+async function getThreadTitle(thread: PluginThread): Promise<string | null> {
+	try {
+		return await thread.title.get()
+	} catch {
+		return null
+	}
+}
+
+function stripKnownTitleStatuses(title: string): string {
+	let stripped = title.trimStart()
+	let changed = true
+	while (changed) {
+		changed = false
+		for (const prefix of TITLE_STATUS_PREFIXES) {
+			if (stripped.startsWith(prefix)) {
+				stripped = stripped.slice(prefix.length).trimStart()
+				changed = true
+			}
+		}
+	}
+	return stripped
+}
+
+async function renameThread(amp: PluginAPI, threadID: ThreadID, title: string): Promise<void> {
+	try {
+		await amp.$`env AMP_SKIP_UPDATE_CHECK=1 amp --no-notifications --no-color --no-ide --no-jetbrains threads rename ${threadID} ${title}`
+	} catch (error) {
+		amp.logger.log(`Failed to rename thread ${threadID}: ${error instanceof Error ? error.message : String(error)}`)
 	}
 }
