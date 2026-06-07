@@ -69,13 +69,21 @@ and `git commit` as context-sensitive: they prompt by default, but are allowed
 automatically during turns where the user explicitly asked to commit/land/ship
 the current work.
 
-## Thread title status
+## Thread title statuses
 
-While the plugin is waiting on its permission prompt, it temporarily prepends
-`⚠️` to the current thread title using `amp threads rename`. The prefix is
-removed as soon as the prompt resolves, including after approval, rejection, or
-plugin UI failure. This makes permission-waiting threads easier to spot in
-thread lists and global/web views.
+Thread title status handling lives in [`thread-title-status.ts`](thread-title-status.ts)
+so multiple status detectors can share one priority-ordered rename queue.
+
+- `⚠️` marks an active custom-permissions prompt. It is applied while the
+  plugin waits on approval/rejection and removed as soon as the prompt resolves.
+- `🙋` marks a thread whose final assistant output appears to be waiting on user
+  action rather than a tool approval, such as "Not committed or pushed" or
+  "Not pushed or landed yet". It is set from [`thread-wait-status.ts`](thread-wait-status.ts)
+  on `agent.end` and cleared on the next `agent.start` or when a later turn no
+  longer matches the wait patterns.
+
+The manager strips known prefixes before applying a new one, and `⚠️` has higher
+priority than `🙋` while both statuses are active.
 
 ## Risks
 

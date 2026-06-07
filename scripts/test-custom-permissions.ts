@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { decide, type Rule } from '../plugins/custom-permissions/custom-permissions'
+import { stripKnownTitleStatuses } from '../plugins/custom-permissions/thread-title-status'
+import { textNeedsUserAction } from '../plugins/custom-permissions/thread-wait-status'
 import { evaluateShellCommand } from '../plugins/custom-permissions/tighteners'
 
 const repoRoot = resolve(import.meta.dir, '..')
@@ -262,6 +264,39 @@ for (const c of cases) {
 		continue
 	}
 	console.log(`PASS ${c.tool}${c.cmd ? ` :: ${c.cmd}` : ''}`)
+}
+
+const waitStatusCases = [
+	{ text: 'Not pushed or landed yet. Slack notification skipped because SLACK_WEBHOOK_URL is not set.', expected: true },
+	{ text: 'Not committed or pushed.', expected: true },
+	{ text: 'Please confirm before I push to origin/main.', expected: true },
+	{ text: 'Please confirm if you want me to proceed with landing, pushing, and deploying.', expected: true },
+	{ text: 'I need your explicit approval before continuing.', expected: true },
+	{ text: 'Waiting on your response.', expected: true },
+	{ text: 'I need input before continuing.', expected: true },
+	{ text: 'Done. Tests passed and pushed successfully.', expected: false },
+]
+
+for (const c of waitStatusCases) {
+	const actual = textNeedsUserAction(c.text)
+	if (actual !== c.expected) {
+		failures += 1
+		console.error(`FAIL wait-status :: ${c.text}`)
+		console.error(`  expected: ${c.expected}`)
+		console.error(`  actual:   ${actual}`)
+		continue
+	}
+	console.log(`PASS wait-status :: ${c.text}`)
+}
+
+const strippedTitle = stripKnownTitleStatuses('⚠️ 🙋 Not committed or pushed')
+if (strippedTitle !== 'Not committed or pushed') {
+	failures += 1
+	console.error('FAIL stripKnownTitleStatuses')
+	console.error('  expected: Not committed or pushed')
+	console.error(`  actual:   ${strippedTitle}`)
+} else {
+	console.log('PASS stripKnownTitleStatuses')
 }
 
 if (failures > 0) {
