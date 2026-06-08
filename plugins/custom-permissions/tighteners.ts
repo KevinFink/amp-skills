@@ -178,6 +178,7 @@ function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDeci
 
 function isLocalPsqlScript(path: string): boolean {
 	return path === './scripts/local_psql.sh'
+		|| path === 'scripts/local_psql.sh'
 		|| path === '~/photoop-backend/scripts/local_psql.sh'
 		|| path === '/home/ec2-user/photoop-backend/scripts/local_psql.sh'
 		|| path === '~/sandwichboard-backend/scripts/local_psql.sh'

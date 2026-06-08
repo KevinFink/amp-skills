@@ -488,22 +488,22 @@ async function askUser(
 
 	titleStatuses.set(ctx.thread, threadID, THREAD_TITLE_STATUSES.permissions.id)
 	try {
-		const approved = await ctx.ui.confirm({
+		const approved = await retryOnUITimeout(() => ctx.ui.confirm({
 			title: `Approve ${tool}?`,
 			message: reasonLines.join('\n\n'),
 			confirmButtonText: 'Allow',
-		})
+		}))
 		if (approved) {
 			return { action: 'allow' }
 		}
 
 		let rejectionComment: string | undefined
 		try {
-			rejectionComment = await ctx.ui.input({
+			rejectionComment = await retryOnUITimeout(() => ctx.ui.input({
 				title: `Why reject ${tool}?`,
 				helpText: 'Optional. This feedback will be returned to the agent so it can adjust its next step.',
 				submitButtonText: 'Reject',
-			})
+			}))
 		} catch {
 			// If the follow-up input is unavailable, still reject the original
 			// tool call rather than losing the user's denial.
@@ -524,4 +524,23 @@ async function askUser(
 	} finally {
 		titleStatuses.clear(ctx.thread, threadID, THREAD_TITLE_STATUSES.permissions.id)
 	}
+}
+
+async function retryOnUITimeout<T>(operation: () => Promise<T>): Promise<T> {
+	while (true) {
+		try {
+			return await operation()
+		} catch (error) {
+			if (isUITimeoutError(error)) {
+				continue
+			}
+			throw error
+		}
+	}
+}
+
+export function isUITimeoutError(error: unknown): boolean {
+	const name = error instanceof Error ? error.name : ''
+	const message = error instanceof Error ? error.message : String(error)
+	return /timeout|timed out|deadline/i.test(`${name}\n${message}`)
 }

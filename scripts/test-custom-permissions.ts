@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { decide, type Rule } from '../plugins/custom-permissions/custom-permissions'
+import { decide, isUITimeoutError, type Rule } from '../plugins/custom-permissions/custom-permissions'
 import { stripKnownTitleStatuses } from '../plugins/custom-permissions/thread-title-status'
 import { textNeedsUserAction } from '../plugins/custom-permissions/thread-wait-status'
 import { evaluateShellCommand } from '../plugins/custom-permissions/tighteners'
@@ -79,8 +79,10 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'terraform plan -out=plan.tfplan', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: './scripts/local_psql.sh -c "SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema=\'sandwichboard\'"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'scripts/local_psql.sh -c "SELECT 1"', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/sandwichboard-backend/scripts/local_psql.sh -c "SELECT 1"', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/sandwichboard-workflow/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
+	{ tool: 'shell_command', cmd: 'scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'relative local_psql still asks with --write' },
 	{ tool: 'shell_command', cmd: './scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'relative local_psql still asks with --write' },
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
@@ -297,6 +299,24 @@ if (strippedTitle !== 'Not committed or pushed') {
 	console.error(`  actual:   ${strippedTitle}`)
 } else {
 	console.log('PASS stripKnownTitleStatuses')
+}
+
+const timeoutErrorCases = [
+	{ error: new Error('Plugin UI request timed out'), expected: true },
+	{ error: Object.assign(new Error('deadline exceeded'), { name: 'TimeoutError' }), expected: true },
+	{ error: new Error('Plugin UI unavailable'), expected: false },
+]
+
+for (const c of timeoutErrorCases) {
+	const actual = isUITimeoutError(c.error)
+	if (actual !== c.expected) {
+		failures += 1
+		console.error(`FAIL isUITimeoutError :: ${c.error.message}`)
+		console.error(`  expected: ${c.expected}`)
+		console.error(`  actual:   ${actual}`)
+		continue
+	}
+	console.log(`PASS isUITimeoutError :: ${c.error.message}`)
 }
 
 if (failures > 0) {
