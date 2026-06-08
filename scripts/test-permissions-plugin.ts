@@ -35,7 +35,9 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: 'aws --profile p --region us-east-1 ec2 describe-instances', expected: 'allow' },
 	{ command: 'aws ec2', expected: 'ask' },
 	// Command/process substitution and backticks
+	{ command: 'export SSH_AUTH_SOCK=$(ls -d /tmp/ssh-XXX*/agent.* 2>/dev/null | head -1); git fetch origin develop && git status --short --branch', expected: 'allow' },
 	{ command: 'aws ec2 describe-instances $(rm -rf /)', expected: 'ask' },
+	{ command: "echo $(python -c 'print(1)')", expected: 'ask' },
 	{ command: 'aws ec2 describe-instances `rm -rf /`', expected: 'ask' },
 	{ command: 'diff <(echo a) <(echo b)', expected: 'ask' },
 	// Single-quoted substitution markers should NOT trigger (they're literal)

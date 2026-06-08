@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { decide, isUITimeoutError, type Rule } from '../plugins/custom-permissions/custom-permissions'
+import { classifyPermissionDecision, decide, isUITimeoutError, permissionReasonForCommand, type Rule } from '../plugins/custom-permissions/custom-permissions'
 import { stripKnownTitleStatuses } from '../plugins/custom-permissions/thread-title-status'
 import { textNeedsUserAction } from '../plugins/custom-permissions/thread-wait-status'
 import { evaluateShellCommand } from '../plugins/custom-permissions/tighteners'
@@ -104,7 +104,13 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'aws ec2 describe-instances | rm -rf /', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'echo hi | rm -rf /tmp/x --recursive --force', expected: { action: 'ask', source: 'builtin' } },
 	// Command substitution / backtick smuggle
+	{
+		tool: 'shell_command',
+		cmd: 'export SSH_AUTH_SOCK=$(ls -d /tmp/ssh-XXX*/agent.* 2>/dev/null | head -1); git fetch origin develop && git status --short --branch',
+		expected: { action: 'allow', source: 'user' },
+	},
 	{ tool: 'Bash', cmd: 'aws ec2 describe-instances $(rm -rf /)', expected: { action: 'ask', source: 'default' } },
+	{ tool: 'Bash', cmd: "echo $(python -c 'print(1)')", expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: 'aws ec2 describe-instances `rm -rf /`', expected: { action: 'ask', source: 'default' } },
 	// Subcommand-position smuggle: `list-` appearing in arg should not match `aws * list-*`
 	{ tool: 'Bash', cmd: 'aws s3 cp local list-bucket/key', expected: { action: 'ask', source: 'default' } },
@@ -152,6 +158,7 @@ const cases: TestCase[] = [
 	// git -C <dir> read-only verbs
 	{ tool: 'Bash', cmd: "sed -n '1,140p' AGENTS.md 2>/dev/null || true && git status --short", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git status --short', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git fetch origin develop', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',
 		cmd: 'git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 status --short --branch && git -C /home/ec2-user/worktrees/SandwichBoard/issue-98 log --oneline -3',
@@ -162,6 +169,7 @@ const cases: TestCase[] = [
 	// bash -n / sh -n syntax check (non-destructive)
 	{ tool: 'Bash', cmd: 'bash -n ~/photoop-product/scripts/worktree-land.sh', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'sh -n ./script.sh', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'npm ci && npm run format:js:check', expected: { action: 'allow', source: 'user' } },
 	// npx eslint is a safe lint command
 	{ tool: 'Bash', cmd: 'npx eslint', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'npx eslint src --max-warnings=0', expected: { action: 'allow', source: 'custom' } },
@@ -198,6 +206,11 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --stop', expected: { action: 'ask', source: 'builtin' } },
+	{
+		tool: 'shell_command',
+		cmd: 'source ~/sandwichboard-workflow/.env >/dev/null 2>&1; aws sqs get-queue-attributes --queue-url "$SBW_DISCOVERY_QUEUE_URL" --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible ApproximateAgeOfOldestMessage --output table',
+		expected: { action: 'allow', source: 'user' },
+	},
 	// bare `git remote` (no -C)
 	{ tool: 'Bash', cmd: 'git remote -v', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git remote', expected: { action: 'allow', source: 'user' } },
@@ -276,6 +289,7 @@ const waitStatusCases = [
 	{ text: 'I need your explicit approval before continuing.', expected: true },
 	{ text: 'Waiting on your response.', expected: true },
 	{ text: 'I need input before continuing.', expected: true },
+	{ text: 'I have not pushed, landed/merged, deployed, or closed the issue. Say the word and I’ll proceed with the landing plan for sandwichboard-workflow issue 321.', expected: true },
 	{ text: 'Done. Tests passed and pushed successfully.', expected: false },
 ]
 
@@ -317,6 +331,25 @@ for (const c of timeoutErrorCases) {
 		continue
 	}
 	console.log(`PASS isUITimeoutError :: ${c.error.message}`)
+}
+
+const backtickSearchCommand = 'rg -n "LLM_DISCOVERY_CONCURRENCY|default `5`|default 5" README.md'
+const backtickReason = permissionReasonForCommand(backtickSearchCommand, 'Backtick command substitution can execute arbitrary code.')
+if (!backtickReason.includes('single quotes around the rg/grep pattern')) {
+	failures += 1
+	console.error('FAIL permissionReasonForCommand :: backtick search hint')
+	console.error(`  actual: ${backtickReason}`)
+} else {
+	console.log('PASS permissionReasonForCommand :: backtick search hint')
+}
+
+const backtickDecision = classifyPermissionDecision('shell_command', backtickSearchCommand)
+if (backtickDecision.action !== 'ask' || !backtickDecision.reason?.includes('single quotes around the rg/grep pattern')) {
+	failures += 1
+	console.error('FAIL classifyPermissionDecision :: backtick search reason')
+	console.error(`  actual: ${JSON.stringify(backtickDecision)}`)
+} else {
+	console.log('PASS classifyPermissionDecision :: backtick search reason')
 }
 
 if (failures > 0) {

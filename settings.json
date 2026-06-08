@@ -84,6 +84,13 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["npm ci", "npm run format:js:check"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["python -m py_compile *", "python3 -m py_compile *", "python -m compileall *", "python3 -m compileall *"]
       },
       "action": "allow"
@@ -98,7 +105,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *"]
+        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
       },
       "action": "allow"
     },
@@ -148,6 +155,20 @@
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["~/SandwichBoard/scripts/dev-server.sh --status", "~/SandwichBoard/scripts/dev-server.sh -s", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh --status", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
+        "cmd": ["source ~/sandwichboard-workflow/.env >/dev/null 2>&1", "source /home/ec2-user/sandwichboard-workflow/.env >/dev/null 2>&1"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
+        "cmd": "/^export SSH_AUTH_SOCK=\\$\\(ls -d \\/tmp\\/ssh-XXX\\*\\/agent\\.\\* 2>\\/dev\\/null \\| head -1\\)$/"
       },
       "action": "allow"
     },

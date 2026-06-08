@@ -20,6 +20,7 @@ const GIT_COMMANDS = new Set(['git'])
 const SED_COMMANDS = new Set(['sed', 'gsed'])
 const GH_COMMANDS = new Set(['gh'])
 const AWS_COMMANDS = new Set(['aws'])
+const DESTRUCTIVE_FILESYSTEM_COMMANDS = new Set(['rm', 'rmdir', 'unlink'])
 const AWS_READ_ONLY_VERBS = ['list-', 'describe-', 'get-', 'show-', 'head-']
 const AWS_READ_ONLY_ACTIONS = new Set(['scan', 'ls', 'help'])
 
@@ -82,7 +83,17 @@ function checkForCommandSubstitution(segment: string): TightenerDecision {
 			continue
 		}
 		if (char === '$' && next === '(') {
-			return { kind: 'ask', reason: 'Command substitution `$(...)` can execute arbitrary code.' }
+			const end = findCommandSubstitutionEnd(segment, index)
+			if (end === -1) {
+				return { kind: 'ask', reason: 'Unterminated command substitution `$(...)`.' }
+			}
+			const innerCommand = segment.slice(index + 2, end)
+			const innerDecision = evaluateShellCommand(innerCommand)
+			if (innerDecision.kind === 'ask') {
+				return { kind: 'ask', reason: `Command substitution \`$(...)\` contains guarded command: ${innerDecision.reason}` }
+			}
+			index = end
+			continue
 		}
 		if (char === '`') {
 			return { kind: 'ask', reason: 'Backtick command substitution can execute arbitrary code.' }
@@ -163,6 +174,10 @@ function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDeci
 
 	if (AWS_COMMANDS.has(command)) {
 		return evaluateAws(args)
+	}
+
+	if (DESTRUCTIVE_FILESYSTEM_COMMANDS.has(command)) {
+		return { kind: 'ask', reason: `${command} can delete files or directories.` }
 	}
 
 	if (command === 'find' || command === 'gfind') {
@@ -698,6 +713,15 @@ function splitShellSegments(command: string): string[] {
 			continue
 		}
 
+		if (quote !== 'single' && char === '$' && next === '(') {
+			const end = findCommandSubstitutionEnd(command, index)
+			if (end !== -1) {
+				current += command.slice(index, end + 1)
+				index = end
+				continue
+			}
+		}
+
 		if (!quote && isSegmentDelimiter(char, next, command, index)) {
 			if (current.trim()) {
 				segments.push(current.trim())
@@ -747,6 +771,56 @@ function previousNonSpaceChar(command: string, index: number): string | undefine
 		}
 	}
 	return undefined
+}
+
+function findCommandSubstitutionEnd(command: string, startIndex: number): number {
+	let quote: 'single' | 'double' | null = null
+	let escaped = false
+	let depth = 1
+
+	for (let index = startIndex + 2; index < command.length; index += 1) {
+		const char = command[index]
+		const next = command[index + 1]
+
+		if (escaped) {
+			escaped = false
+			continue
+		}
+
+		if (char === '\\' && quote !== 'single') {
+			escaped = true
+			continue
+		}
+
+		if (char === "'" && quote !== 'double') {
+			quote = quote === 'single' ? null : 'single'
+			continue
+		}
+
+		if (char === '"' && quote !== 'single') {
+			quote = quote === 'double' ? null : 'double'
+			continue
+		}
+
+		if (quote === 'single') {
+			continue
+		}
+
+		if (char === '$' && next === '(') {
+			depth += 1
+			index += 1
+			continue
+		}
+
+		if (!quote && char === ')') {
+			depth -= 1
+			if (depth === 0) {
+				return index
+			}
+		}
+	}
+
+	return -1
 }
 
 function tokenizeShell(segment: string): string[] {

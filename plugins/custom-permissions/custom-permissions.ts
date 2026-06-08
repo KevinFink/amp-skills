@@ -38,6 +38,7 @@ export interface Decision {
 	action: Action
 	rule: Rule | null
 	source: 'custom' | 'user' | 'builtin' | 'default'
+	reason?: string
 }
 
 export interface TurnIntent {
@@ -157,7 +158,7 @@ export function classifyPermissionDecision(tool: string, cmd: string | undefined
 	if (decision.action === 'allow' && cmd !== undefined) {
 		const tightened = evaluateShellCommand(cmd)
 		if (tightened.kind === 'ask') {
-			decision = { action: 'ask', rule: null, source: 'default' }
+			decision = { action: 'ask', rule: null, source: 'default', reason: permissionReasonForCommand(cmd, tightened.reason) }
 		}
 	}
 
@@ -375,6 +376,14 @@ function splitShellSegments(command: string): string[] {
 			current += char
 			continue
 		}
+		if (quote !== 'single' && char === '$' && next === '(') {
+			const end = findCommandSubstitutionEnd(command, index)
+			if (end !== -1) {
+				current += command.slice(index, end + 1)
+				index = end
+				continue
+			}
+		}
 		if (!quote && isSegmentDelimiter(char, next, command, index)) {
 			if (current.trim()) {
 				segments.push(current.trim())
@@ -426,6 +435,50 @@ function previousNonSpaceChar(command: string, index: number): string | undefine
 		}
 	}
 	return undefined
+}
+
+function findCommandSubstitutionEnd(command: string, startIndex: number): number {
+	let quote: 'single' | 'double' | null = null
+	let escaped = false
+	let depth = 1
+
+	for (let index = startIndex + 2; index < command.length; index += 1) {
+		const char = command[index]
+		const next = command[index + 1]
+
+		if (escaped) {
+			escaped = false
+			continue
+		}
+		if (char === '\\' && quote !== 'single') {
+			escaped = true
+			continue
+		}
+		if (char === "'" && quote !== 'double') {
+			quote = quote === 'single' ? null : 'single'
+			continue
+		}
+		if (char === '"' && quote !== 'single') {
+			quote = quote === 'double' ? null : 'double'
+			continue
+		}
+		if (quote === 'single') {
+			continue
+		}
+		if (char === '$' && next === '(') {
+			depth += 1
+			index += 1
+			continue
+		}
+		if (!quote && char === ')') {
+			depth -= 1
+			if (depth === 0) {
+				return index
+			}
+		}
+	}
+
+	return -1
 }
 
 function ruleMatches(rule: Rule, tool: string, cmd: string | undefined): boolean {
@@ -484,6 +537,7 @@ async function askUser(
 		`Tool: ${tool}`,
 		cmd ? `Command:\n${cmd}` : null,
 		`Source: ${decision.source}${decision.rule ? ` (action=${decision.rule.action})` : ''}`,
+		decision.reason ? `Reason:\n${decision.reason}` : null,
 	].filter(Boolean) as string[]
 
 	titleStatuses.set(ctx.thread, threadID, THREAD_TITLE_STATUSES.permissions.id)
@@ -513,13 +567,13 @@ async function askUser(
 		return {
 			action: 'reject-and-continue',
 			message: trimmedComment
-				? `User rejected the tool call via custom permissions plugin.\n\nUser feedback: ${trimmedComment}`
-				: 'User rejected the tool call via custom permissions plugin.',
+				? `User rejected the tool call via custom permissions plugin.${decision.reason ? `\n\nPermission reason: ${decision.reason}` : ''}\n\nUser feedback: ${trimmedComment}`
+				: `User rejected the tool call via custom permissions plugin.${decision.reason ? `\n\nPermission reason: ${decision.reason}` : ''}`,
 		}
 	} catch (error) {
 		return {
 			action: 'reject-and-continue',
-			message: `Plugin UI unavailable; rejecting ${tool} per safe-by-default policy.`,
+			message: `Plugin UI unavailable; rejecting ${tool} per safe-by-default policy.${decision.reason ? `\n\nPermission reason: ${decision.reason}` : ''}`,
 		}
 	} finally {
 		titleStatuses.clear(ctx.thread, threadID, THREAD_TITLE_STATUSES.permissions.id)
@@ -543,4 +597,16 @@ export function isUITimeoutError(error: unknown): boolean {
 	const name = error instanceof Error ? error.name : ''
 	const message = error instanceof Error ? error.message : String(error)
 	return /timeout|timed out|deadline/i.test(`${name}\n${message}`)
+}
+
+export function permissionReasonForCommand(command: string, reason: string): string {
+	if (/backtick/i.test(reason) && looksLikeSearchCommandWithDoubleQuotedBackticks(command)) {
+		return `${reason} This looks like a literal search pattern containing backticks; retry with single quotes around the rg/grep pattern, or escape the backticks.`
+	}
+	return reason
+}
+
+function looksLikeSearchCommandWithDoubleQuotedBackticks(command: string): boolean {
+	return /(?:^|[;&|\n]\s*)(?:rg|grep|egrep|fgrep)\b/.test(command)
+		&& /"[^"`]*`[^"`]*`?[^"`]*"/.test(command)
 }

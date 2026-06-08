@@ -28,6 +28,14 @@ export class ThreadTitleStatusManager {
 		})
 	}
 
+	setActive(thread: PluginThread, threadID: ThreadID, statusID: ThreadTitleStatusID): void {
+		const state = this.getState(threadID)
+		state.activeCounts.set(statusID, 1)
+		this.enqueue(threadID, state, async () => {
+			await this.apply(thread, threadID, state)
+		})
+	}
+
 	clear(thread: PluginThread, threadID: ThreadID, statusID: ThreadTitleStatusID): void {
 		const key = threadID.toString()
 		const state = this.states.get(key)
