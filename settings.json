@@ -63,6 +63,20 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["npx prettier --check *", "npx --yes prettier --check *", "npx prettier --list-different *", "npx --yes prettier --list-different *"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
+        "cmd": ["npx prettier *", "npx --yes prettier *", "ruff format", "ruff format *", "python -m ruff format", "python -m ruff format *", "python3 -m ruff format", "python3 -m ruff format *"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["nl -ba * | sed -n *", "sed -n *", "sed -e *"]
       },
       "action": "allow"
@@ -126,7 +140,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["terraform fmt", "terraform fmt *", "terraform validate", "terraform validate *", "terraform plan", "terraform plan *"]
+        "cmd": ["terraform init", "terraform init *", "terraform fmt", "terraform fmt *", "terraform validate", "terraform validate *", "terraform plan", "terraform plan *", "terraform show", "terraform show *", "terraform output", "terraform output *", "terraform graph", "terraform graph *", "terraform providers", "terraform providers *", "terraform version", "terraform version *", "terraform workspace show", "terraform workspace show *", "terraform state list", "terraform state list *", "terraform state show", "terraform state show *"]
       },
       "action": "allow"
     },

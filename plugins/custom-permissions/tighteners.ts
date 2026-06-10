@@ -223,6 +223,9 @@ function evaluatePython(args: string[], segment: string): TightenerDecision {
 		if (moduleName === 'py_compile' || moduleName === 'compileall') {
 			return { kind: 'allow', reason: `Python syntax/bytecode check via -m ${moduleName}.` }
 		}
+		if (moduleName === 'ruff' && args[2] === 'format') {
+			return { kind: 'allow', reason: 'Python module execution is limited to ruff format.' }
+		}
 		return { kind: 'ask', reason: `Python module execution (-m ${moduleName ?? '<missing module>'}) can run arbitrary code.` }
 	}
 
