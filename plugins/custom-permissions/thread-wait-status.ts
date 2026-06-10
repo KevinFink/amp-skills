@@ -15,6 +15,7 @@ const NEEDS_USER_ACTION_PATTERNS = [
 ]
 
 const DELAYED_THREAD_CHECK_MS = 2_000
+const THREAD_CHECK_RETRY_COUNT = 5
 
 export function installThreadWaitStatus(amp: PluginAPI, titleStatuses: ThreadTitleStatusManager): void {
 	const delayedChecks = new Map<string, ReturnType<typeof setTimeout>>()
@@ -50,11 +51,20 @@ export function installThreadWaitStatus(amp: PluginAPI, titleStatuses: ThreadTit
 		}
 
 		const threadKey = threadID.toString()
-		const delayedCheck = setTimeout(() => {
-			delayedChecks.delete(threadKey)
-			void updateThreadWaitStatus(thread, threadID, titleStatuses, [])
-		}, DELAYED_THREAD_CHECK_MS)
-		delayedChecks.set(threadKey, delayedCheck)
+		let attemptsRemaining = THREAD_CHECK_RETRY_COUNT
+		const scheduleDelayedCheck = () => {
+			const delayedCheck = setTimeout(async () => {
+				const detectedAfterDelay = await updateThreadWaitStatus(thread, threadID, titleStatuses, [])
+				if (detectedAfterDelay || attemptsRemaining <= 1) {
+					delayedChecks.delete(threadKey)
+					return
+				}
+				attemptsRemaining -= 1
+				scheduleDelayedCheck()
+			}, DELAYED_THREAD_CHECK_MS)
+			delayedChecks.set(threadKey, delayedCheck)
+		}
+		scheduleDelayedCheck()
 	})
 }
 

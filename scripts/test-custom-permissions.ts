@@ -299,6 +299,7 @@ for (const c of cases) {
 const waitStatusCases = [
 	{ text: 'Not pushed or landed yet. Slack notification skipped because SLACK_WEBHOOK_URL is not set.', expected: true },
 	{ text: 'Not committed or pushed.', expected: true },
+	{ text: 'Not landed, committed, pushed, or closed yet.', expected: true },
 	{ text: 'Please confirm before I push to origin/main.', expected: true },
 	{ text: 'Please confirm if you want me to proceed with landing, pushing, and deploying.', expected: true },
 	{ text: 'I need your explicit approval before continuing.', expected: true },
