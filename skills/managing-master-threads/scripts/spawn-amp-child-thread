@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+	cat <<'USAGE'
+Usage: spawn-amp-child-thread [--name NAME] [--title TITLE] [--workdir DIR] [--mode MODE] [--] [PROMPT...]
+
+Creates a new Amp thread, optionally renames it, opens it in a detached tmux
+window, and optionally pastes an initial prompt into that child thread.
+
+Examples:
+  spawn-amp-child-thread --name api-readonly --title "Child: API investigation" -- "Investigate the API issue."
+  cat prompt.md | spawn-amp-child-thread --name ui-fix --workdir /home/ec2-user/SandwichBoard
+USAGE
+}
+
+die() {
+	printf 'spawn-amp-child-thread: %s\n' "$*" >&2
+	exit 1
+}
+
+sanitize_name() {
+	local raw="$1"
+	local sanitized
+	sanitized="$(printf '%s' "$raw" \
+		| tr '[:upper:]' '[:lower:]' \
+		| sed -E 's/[^a-z0-9_.:-]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g')"
+	printf '%s' "${sanitized:0:48}"
+}
+
+name=""
+title=""
+workdir="$PWD"
+mode=""
+
+while (($# > 0)); do
+	case "$1" in
+		--name)
+			(($# >= 2)) || die '--name requires a value'
+			name="$2"
+			shift 2
+			;;
+		--title)
+			(($# >= 2)) || die '--title requires a value'
+			title="$2"
+			shift 2
+			;;
+		--workdir)
+			(($# >= 2)) || die '--workdir requires a value'
+			workdir="$2"
+			shift 2
+			;;
+		--mode)
+			(($# >= 2)) || die '--mode requires a value'
+			mode="$2"
+			shift 2
+			;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			die "unknown option: $1"
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+prompt=""
+if (($# > 0)); then
+	prompt="$*"
+elif [[ ! -t 0 ]]; then
+	prompt="$(cat)"
+fi
+
+command -v amp >/dev/null 2>&1 || die 'amp is not on PATH'
+command -v tmux >/dev/null 2>&1 || die 'tmux is not on PATH'
+[[ -n "${TMUX:-}" ]] || die 'not running inside tmux'
+[[ -d "$workdir" ]] || die "workdir does not exist: $workdir"
+
+if [[ -n "$mode" && ! "$mode" =~ ^(smart|rush|deep)$ ]]; then
+	die '--mode must be one of: smart, rush, deep'
+fi
+
+if [[ -z "$name" ]]; then
+	if [[ -n "$title" ]]; then
+		name="$(sanitize_name "$title")"
+	elif [[ -n "$prompt" ]]; then
+		name="$(sanitize_name "$prompt")"
+	else
+		name="amp-child"
+	fi
+fi
+name="$(sanitize_name "$name")"
+[[ -n "$name" ]] || name="amp-child"
+
+thread_id="$(amp threads new | tr -d '[:space:]')"
+[[ "$thread_id" =~ ^T-[0-9a-fA-F-]{36}$ ]] || die "unexpected thread id from amp: $thread_id"
+
+if [[ -z "$title" ]]; then
+	title="Child: $name"
+fi
+amp threads rename "$thread_id" "$title" >/dev/null
+
+target="$name"
+if tmux list-windows -F '#W' | grep -Fxq "$target"; then
+	target="${name}-${thread_id:2:8}"
+fi
+
+amp_cmd="amp threads continue $thread_id"
+if [[ -n "$mode" ]]; then
+	amp_cmd="amp -m $mode threads continue $thread_id"
+fi
+
+tmux new-window -n "$target" -c "$workdir" -d "$amp_cmd"
+
+if [[ -n "$prompt" ]]; then
+	buffer="amp-child-${thread_id}"
+	# Give the TUI a moment to finish initializing before pasting the prompt.
+	sleep 1
+	printf '%s' "$prompt" | tmux load-buffer -b "$buffer" -
+	tmux paste-buffer -b "$buffer" -t "$target"
+	tmux delete-buffer -b "$buffer" >/dev/null 2>&1 || true
+	tmux send-keys -t "$target" C-m
+fi
+
+printf 'thread_id=%s\n' "$thread_id"
+printf 'tmux_window=%s\n' "$target"
+printf 'title=%s\n' "$title"
+printf 'workdir=%s\n' "$workdir"

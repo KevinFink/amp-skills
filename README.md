@@ -65,6 +65,16 @@ A skill for managing background processes via `tmux`. Spawn new windows/panes fo
 
 Usage from within Amp: ask to "run the dev server in the background" or load the `tmux` skill.
 
+### skills/managing-master-threads
+
+A skill for running a persistent master management thread. The master renames itself, only spawns/prompts/inspects tmux Amp child threads, and delegates all implementation, investigation, editing, and validation work to those children. It includes a narrow helper script for creating child Amp threads in tmux:
+
+```bash
+skills/managing-master-threads/scripts/spawn-amp-child-thread --name api-investigation --title "Child: API investigation" -- "Investigate the API issue and report back."
+```
+
+Usage from within Amp: ask to "start a master thread" or load the `managing-master-threads` skill.
+
 ### skills/ui-preview
 
 A skill for previewing and screenshotting local dev servers and storybooks using Chrome DevTools (via MCP). Navigate pages, take screenshots, and analyze UI components.

@@ -70,6 +70,8 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'amp plugins show-docs', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'amp plugins show-docs custom-permissions', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '/home/ec2-user/amp-skills/skills/managing-master-threads/scripts/spawn-amp-child-thread --name api-investigation --title "Child: API investigation" -- "Investigate and report back."', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: './skills/managing-master-threads/scripts/spawn-amp-child-thread --name ui-fix --workdir /home/ec2-user/SandwichBoard -- "Fix the UI issue and report validation."', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --add-assignee @me --add-label status/in-progress --repo photoopapp/photoop-product 2>&1', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue edit 249 --remove-label status/in-progress --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
@@ -194,6 +196,14 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'tmux capture-pane -p -S -120 -t RIGHT:sbw-discovery 2>&1 || true', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'tmux list-windows', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'tmux list-windows -t RIGHT', expected: { action: 'allow', source: 'custom' } },
+	// Narrow tmux write allowance for master-thread Amp spawning only.
+	{ tool: 'shell_command', cmd: 'tmux new-window -n "sbw-123" -d', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'tmux send-keys -t "sbw-123" "amp" C-m', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'tmux send-keys -t sbw-123 "amp threads continue T-019ecb97-d223-72dc-bc22-5d60ef9ee1e0" C-m', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'tmux new-window -n handoff amp threads continue T-019ecb97-d223-72dc-bc22-5d60ef9ee1e0', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'tmux new-window -n "sbw-123" -d \';\' send-keys -t "sbw-123" "amp" C-m', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'tmux send-keys -t "sbw-123" "rm -rf /tmp/nope" C-m', expected: { action: 'ask', source: 'builtin' } },
+	{ tool: 'shell_command', cmd: 'tmux new-window -n "sbw-123" -d \';\' send-keys -t "sbw-123" "npm start" C-m', expected: { action: 'ask', source: 'builtin' } },
 	// gh repo view is read-only repository metadata inspection
 	{ tool: 'Bash', cmd: 'gh repo view', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'gh repo view photoopapp/photoop-product --json name,owner', expected: { action: 'allow', source: 'custom' } },

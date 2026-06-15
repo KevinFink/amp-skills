@@ -42,7 +42,14 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["tmux capture-pane", "tmux capture-pane *", "tmux list-windows", "tmux list-windows *"]
+        "cmd": ["tmux capture-pane", "tmux capture-pane *", "tmux list-windows", "tmux list-windows *", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? (-d )?amp threads continue T-[0-9a-fA-F-]{36}$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp[\"'] C-m$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp threads continue T-[0-9a-fA-F-]{36}[\"'] C-m$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d ';' send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp( threads continue T-[0-9a-fA-F-]{36})?[\"'] C-m$/"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
+        "cmd": ["~/amp-skills/skills/managing-master-threads/scripts/spawn-amp-child-thread *", "/home/ec2-user/amp-skills/skills/managing-master-threads/scripts/spawn-amp-child-thread *", "skills/managing-master-threads/scripts/spawn-amp-child-thread *", "./skills/managing-master-threads/scripts/spawn-amp-child-thread *"]
       },
       "action": "allow"
     },
