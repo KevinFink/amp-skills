@@ -70,7 +70,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["npx prettier --check *", "npx --yes prettier --check *", "npx prettier --list-different *", "npx --yes prettier --list-different *"]
+        "cmd": ["npx prettier --check *", "npx --yes prettier --check *", "npx prettier --list-different *", "npx --yes prettier --list-different *", "/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check \"admin/js/**/*.js\" \"js/**/*.js\""]
       },
       "action": "allow"
     },
@@ -105,7 +105,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["npm ci", "npm run format:js:check"]
+        "cmd": ["npm ci", "npm run format:js:check", "npx --yes bun run scripts/test-permissions-plugin.ts", "npx --yes bun run scripts/test-custom-permissions.ts"]
       },
       "action": "allow"
     },

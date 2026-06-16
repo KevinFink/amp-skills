@@ -344,7 +344,7 @@ function gitPositionals(args: string[]): string[] {
 }
 
 function evaluateSed(command: string, args: string[], segment: string): TightenerDecision {
-	if (segment.includes('>')) {
+	if (hasUnsafeOutputRedirection(segment)) {
 		return { kind: 'ask', reason: `${command} output redirection can write files.` }
 	}
 
@@ -557,6 +557,66 @@ function subcommandAfterGlobalFlags(args: string[]): string | undefined {
 
 function isSedInPlaceFlag(arg: string): boolean {
 	return arg === '--in-place' || arg.startsWith('--in-place=') || /^-[A-Za-z]*i/.test(arg)
+}
+
+function hasUnsafeOutputRedirection(segment: string): boolean {
+	let quote: 'single' | 'double' | null = null
+	let escaped = false
+
+	for (let index = 0; index < segment.length; index += 1) {
+		const char = segment[index]
+
+		if (escaped) {
+			escaped = false
+			continue
+		}
+
+		if (char === '\\' && quote !== 'single') {
+			escaped = true
+			continue
+		}
+
+		if (char === "'" && quote !== 'double') {
+			quote = quote === 'single' ? null : 'single'
+			continue
+		}
+
+		if (char === '"' && quote !== 'single') {
+			quote = quote === 'double' ? null : 'double'
+			continue
+		}
+
+		if (quote || char !== '>') {
+			continue
+		}
+
+		if (segment[index + 1] === '(') {
+			return true
+		}
+
+		const target = outputRedirectionTarget(segment, index)
+		if (target !== '/dev/null' && target !== '&1' && target !== '&2') {
+			return true
+		}
+	}
+
+	return false
+}
+
+function outputRedirectionTarget(segment: string, redirectionIndex: number): string {
+	let cursor = redirectionIndex + 1
+	if (segment[cursor] === '>') {
+		cursor += 1
+	}
+	while (/\s/.test(segment[cursor] ?? '')) {
+		cursor += 1
+	}
+	let target = ''
+	while (cursor < segment.length && !/\s/.test(segment[cursor])) {
+		target += segment[cursor]
+		cursor += 1
+	}
+	return target
 }
 
 function sedScriptCanWriteOrExecute(script: string): boolean {

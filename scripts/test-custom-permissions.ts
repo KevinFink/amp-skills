@@ -25,9 +25,6 @@ function decideWithTighteners(tool: string, cmd: string | undefined, message?: s
 			gitLandingRequested: /\b(land|landing|ship|shipping|confirmed|confirm|approved|approve|yes|go ahead)\b/.test(normalizedMessage ?? ''),
 		},
 	)
-	if (decision.action === 'allow' && decision.source === 'custom') {
-		return decision
-	}
 	if (decision.action === 'allow' && cmd !== undefined) {
 		const tightened = evaluateShellCommand(cmd)
 		if (tightened.kind === 'ask') {
@@ -54,7 +51,7 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'git -C ~/repo add foo && git -C ~/repo commit -m "update"', message: 'ship it', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git push origin develop', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo merge --ff-only feature', message: 'land it', expected: { action: 'allow', source: 'custom' } },
-	{ tool: 'Bash', cmd: 'git -C ~/repo worktree remove ../wt', message: 'confirmed', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: 'git -C ~/repo worktree remove ../wt', message: 'confirmed', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-land.sh sandwichboard-backend 188 -m "Add campaign QA dashboard API"', message: 'yes', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: '/home/ec2-user/photoop-product/scripts/worktree-land.sh photoop-backend 188 -m "Land issue 188"', message: 'go ahead', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git push origin develop', message: 'status?', expected: { action: 'ask', source: 'builtin' } },
@@ -97,6 +94,9 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
 	{ tool: 'Bash', cmd: "sed -n '470,580p' ~/photoop-infrastructure/terraform/environments/prod/main.tf", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: "sed -n '1,140p' db/migrations_yoyo/0016_outreach_smartlead_registry.sql 2>/dev/null", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: "sed -n '1,140p' db/migrations_yoyo/0016_outreach_smartlead_registry.sql >/dev/null 2>&1", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: "sed -n '1,80p' README.md > out.txt", expected: { action: 'ask', source: 'default' } },
 	// AWS read-only verbs (single command and segmented multi-command)
 	{ tool: 'Bash', cmd: 'aws --profile photoop sqs list-queues --queue-name-prefix sbw-prod', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'aws ec2 describe-instances --region us-east-1', expected: { action: 'allow', source: 'user' } },
@@ -180,12 +180,16 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'bash -n ~/photoop-product/scripts/worktree-land.sh', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'sh -n ./script.sh', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'npm ci && npm run format:js:check', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'npx --yes bun run scripts/test-permissions-plugin.ts', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'npx --yes bun run scripts/test-custom-permissions.ts', expected: { action: 'allow', source: 'user' } },
 	// npx eslint is a safe lint command
 	{ tool: 'Bash', cmd: 'npx eslint', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: 'npx eslint src --max-warnings=0', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'npx prettier --check admin/js/admin-campaign-qa.js', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'npx prettier --write admin/js/admin-campaign-qa.js', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'npx --yes prettier --write "admin/**/*.js"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check "admin/js/**/*.js" "js/**/*.js"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --write "admin/js/**/*.js" "js/**/*.js"', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'ruff format app tests', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'python -m ruff format app/main.py', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'python3 -m ruff format app/main.py tests/', expected: { action: 'allow', source: 'user' } },
