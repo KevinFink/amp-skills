@@ -168,6 +168,7 @@ const cases: TestCase[] = [
 	// git -C <dir> read-only verbs
 	{ tool: 'Bash', cmd: "sed -n '1,140p' AGENTS.md 2>/dev/null || true && git status --short", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git status --short', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'git branch --list website-tune-up-navigation && test -d /home/ec2-user/worktrees/sandwichboard-workflow/website-tune-up-navigation && echo exists || true', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git fetch origin develop', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',
@@ -206,6 +207,7 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'tmux send-keys -t sbw-123 "amp threads continue T-019ecb97-d223-72dc-bc22-5d60ef9ee1e0" C-m', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'tmux new-window -n handoff amp threads continue T-019ecb97-d223-72dc-bc22-5d60ef9ee1e0', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'tmux new-window -n "sbw-123" -d \';\' send-keys -t "sbw-123" "amp" C-m', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: "tmux new-window -n website-placeholder-rule -d \\; send-keys -t website-placeholder-rule 'cd /home/ec2-user/SandwichBoard && amp' C-m; sleep 4; tmux send-keys -t website-placeholder-rule 'Add a new detectable issue to the website_tune_up product: \"Placeholder text is still live on your site\". Detection should flag leftover placeholder text such as \"Lorem ipsum\" or \"Your text here\" and report changed files.' C-m", expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'tmux send-keys -t "sbw-123" "rm -rf /tmp/nope" C-m', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'shell_command', cmd: 'tmux new-window -n "sbw-123" -d \';\' send-keys -t "sbw-123" "npm start" C-m', expected: { action: 'ask', source: 'builtin' } },
 	// gh repo view is read-only repository metadata inspection
@@ -221,6 +223,7 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'nl README.md', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: "nl -ba js/admin-competitors.js | sed -n '520,620p'", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'Bash', cmd: "nl -ba app/services/sandwichboard_service.py | awk 'NR>=2210 && NR<=2435 {print}'", expected: { action: 'allow', source: 'custom' } },
 	// Fixed curl GET piped to rg is read-only inspection of the admin marketing page
 	{ tool: 'Bash', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
@@ -230,6 +233,9 @@ const cases: TestCase[] = [
 	// SandwichBoard worktree helper is an approved local workflow script
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/scripts/worktree-start.sh sandwichboard-backend 456', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '~/photoop-product/scripts/worktree-start.sh', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: './scripts/worktree-start.sh photoop-backend 789', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: 'scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-land.sh SandwichBoard 123 -m "Land issue"', expected: { action: 'ask', source: 'builtin' } },
 	// SandwichBoard dev-server status is read-only; start/stop operations should still prompt.
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
@@ -263,15 +269,20 @@ const cases: TestCase[] = [
 		cmd: 'cd ~/worktrees/photoop-infrastructure/issue-93 && for f in nginx/a.conf nginx/b.conf; do\n  echo "=== $f ==="\n  grep -n "location\\|proxy_pass" "$f" | head -20\ndone',
 		expected: { action: 'allow', source: 'user' },
 	},
+	{
+		tool: 'Bash',
+		cmd: 'ls -la /home/ec2-user && for d in /home/ec2-user/sandwichboard-workflow /home/ec2-user/sandwichboard-backend; do echo "--- $d"; git -C "$d" status --short --branch; done',
+		expected: { action: 'allow', source: 'user' },
+	},
 	// python -m py_compile / compileall: bytecode/syntax check is safe
 	{ tool: 'Bash', cmd: 'cd ~/worktrees/sandwichboard-workflow/issue-94 && python3 -m py_compile app/config.py app/discovery/llm_payload_store.py && echo OK', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'python -m py_compile foo.py', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'python3 -m compileall app/', expected: { action: 'allow', source: 'user' } },
 	// for-loop with destructive body must still ask (single-line: `do rm -rf $x`)
 	{ tool: 'Bash', cmd: 'for x in *; do rm -rf $x; done', expected: { action: 'ask', source: 'builtin' } },
-	// for-loop iteration list with command substitution: single-line `do <cmd>` is asked by builtin `do *`,
-	// so dangerous payload never gets to slip through.
-	{ tool: 'Bash', cmd: 'for x in $(rm -rf /); do echo $x; done', expected: { action: 'ask', source: 'builtin' } },
+	// for-loop iteration list with command substitution: even with a safe `do echo *`
+	// body, the command-substitution tightener keeps the payload from slipping through.
+	{ tool: 'Bash', cmd: 'for x in $(rm -rf /); do echo $x; done', expected: { action: 'ask', source: 'default' } },
 	// notify-slack pipeline: printf segment + bare tool path segment
 	{
 		tool: 'Bash',

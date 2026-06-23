@@ -14,7 +14,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["true", "false", ":"]
+        "cmd": ["true", "false", ":", "test -d /home/ec2-user/worktrees/*"]
       },
       "action": "allow"
     },
@@ -42,7 +42,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["tmux capture-pane", "tmux capture-pane *", "tmux list-windows", "tmux list-windows *", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? (-d )?amp threads continue T-[0-9a-fA-F-]{36}$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp[\"'] C-m$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp threads continue T-[0-9a-fA-F-]{36}[\"'] C-m$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d ';' send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp( threads continue T-[0-9a-fA-F-]{36})?[\"'] C-m$/"]
+        "cmd": ["tmux capture-pane", "tmux capture-pane *", "tmux list-windows", "tmux list-windows *", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? (-d )?amp threads continue T-[0-9a-fA-F-]{36}$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp[\"'] C-m$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp threads continue T-[0-9a-fA-F-]{36}[\"'] C-m$/", "/^tmux send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"'][A-Z][\\s\\S]*[\"'] C-m$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d (\\\\;|';') send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']amp( threads continue T-[0-9a-fA-F-]{36})?[\"'] C-m$/", "/^tmux new-window -n [\"']?[A-Za-z0-9_.:-]+[\"']? -d (\\\\;|';') send-keys -t [\"']?[A-Za-z0-9_.:-]+[\"']? [\"']cd [^`$()|;]+ && amp( threads continue T-[0-9a-fA-F-]{36})?[\"'] C-m$/"]
       },
       "action": "allow"
     },
@@ -56,7 +56,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["for * in *", "do", "done", "then", "fi", "else", "esac"]
+        "cmd": ["for * in *", "do", "do echo *", "done", "then", "fi", "else", "esac"]
       },
       "action": "allow"
     },
@@ -84,7 +84,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["nl -ba * | sed -n *", "sed -n *", "sed -e *"]
+        "cmd": ["nl -ba * | sed -n *", "sed -n *", "sed -e *", "/^awk 'NR>=[0-9]+ && NR<=[0-9]+ \\{print\\}'$/"]
       },
       "action": "allow"
     },
@@ -126,7 +126,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
+        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git branch --list", "git branch --list *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
       },
       "action": "allow"
     },
@@ -161,14 +161,14 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["~/photoop-product/scripts/worktree-start.sh *", "/home/ec2-user/photoop-product/scripts/worktree-start.sh *"]
+        "cmd": ["~/photoop-product/scripts/worktree-start.sh", "~/photoop-product/scripts/worktree-start.sh *", "/home/ec2-user/photoop-product/scripts/worktree-start.sh", "/home/ec2-user/photoop-product/scripts/worktree-start.sh *", "./scripts/worktree-start.sh", "./scripts/worktree-start.sh *", "scripts/worktree-start.sh", "scripts/worktree-start.sh *"]
       },
       "action": "allow"
     },
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["~/SandwichBoard/scripts/worktree-start.sh *", "/home/ec2-user/SandwichBoard/scripts/worktree-start.sh *"]
+        "cmd": ["~/SandwichBoard/scripts/worktree-start.sh", "~/SandwichBoard/scripts/worktree-start.sh *", "/home/ec2-user/SandwichBoard/scripts/worktree-start.sh", "/home/ec2-user/SandwichBoard/scripts/worktree-start.sh *"]
       },
       "action": "allow"
     },

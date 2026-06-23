@@ -42,7 +42,7 @@ If implementation, debugging, research, code review, or validation is needed, de
 
 ## Spawn Child Amp Threads
 
-Prefer the bundled helper because it creates an Amp thread, gives it a title, opens it in a detached tmux window, and optionally pastes the first prompt:
+Prefer the bundled helper because it creates an Amp thread, opens it in a detached tmux window, pastes the first prompt, and then gives the non-empty thread a title:
 
 ```bash
 skills/managing-master-threads/scripts/spawn-amp-child-thread \
@@ -60,6 +60,8 @@ You are a child Amp thread reporting to a master thread.
 Investigate the API routing issue. Do not commit. Return files inspected, findings, validation, and blockers.
 PROMPT
 ```
+
+Amp rejects `amp threads rename` for empty threads. Do not manually rename a newly-created child before sending its first prompt. The helper handles this by renaming after the initial prompt is submitted; if you spawn children manually, send the prompt first and then rename once the child has at least one message.
 
 Use one child per independent workstream. Keep child prompts outcome-first and include:
 

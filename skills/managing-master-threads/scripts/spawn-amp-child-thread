@@ -5,8 +5,8 @@ usage() {
 	cat <<'USAGE'
 Usage: spawn-amp-child-thread [--name NAME] [--title TITLE] [--workdir DIR] [--mode MODE] [--] [PROMPT...]
 
-Creates a new Amp thread, optionally renames it, opens it in a detached tmux
-window, and optionally pastes an initial prompt into that child thread.
+Creates a new Amp thread, opens it in a detached tmux window, optionally
+pastes an initial prompt, and then renames the thread once it is non-empty.
 
 Examples:
   spawn-amp-child-thread --name api-readonly --title "Child: API investigation" -- "Investigate the API issue."
@@ -17,6 +17,10 @@ USAGE
 die() {
 	printf 'spawn-amp-child-thread: %s\n' "$*" >&2
 	exit 1
+}
+
+warn() {
+	printf 'spawn-amp-child-thread: warning: %s\n' "$*" >&2
 }
 
 sanitize_name() {
@@ -106,7 +110,6 @@ thread_id="$(amp threads new | tr -d '[:space:]')"
 if [[ -z "$title" ]]; then
 	title="Child: $name"
 fi
-amp threads rename "$thread_id" "$title" >/dev/null
 
 target="$name"
 if tmux list-windows -F '#W' | grep -Fxq "$target"; then
@@ -128,6 +131,22 @@ if [[ -n "$prompt" ]]; then
 	tmux paste-buffer -b "$buffer" -t "$target"
 	tmux delete-buffer -b "$buffer" >/dev/null 2>&1 || true
 	tmux send-keys -t "$target" C-m
+
+	# Amp rejects renaming an empty thread. Rename only after the first prompt
+	# has had a chance to become the thread's first message.
+	renamed=0
+	for _ in 1 2 3 4 5; do
+		sleep 1
+		if amp threads rename "$thread_id" "$title" >/dev/null 2>&1; then
+			renamed=1
+			break
+		fi
+	done
+	if ((renamed == 0)); then
+		warn "could not rename child thread $thread_id after sending prompt; continuing without title"
+	fi
+else
+	warn "created empty child thread $thread_id; skipping rename because Amp rejects renaming empty threads"
 fi
 
 printf 'thread_id=%s\n' "$thread_id"
