@@ -21,6 +21,13 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
+        "cmd": ["/^\\[ -d \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\]$/", "/^ln -sfn \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\.venv$/", "/^\\[ -f \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\]$/", "/^cp -P \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\.env$/"]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
         "cmd": ["sleep", "sleep *"]
       },
       "action": "allow"
@@ -28,14 +35,14 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *", "jq", "jq *", "pgrep", "pgrep *", "ps", "ps *", "journalctl", "journalctl *"]
+        "cmd": ["head", "tail", "cat", "grep", "egrep", "fgrep", "wc", "less", "more", "sort", "sort *", "uniq", "uniq *", "rg", "rg *", "jq", "jq *", "readlink", "readlink *", "pgrep", "pgrep *", "ps", "ps *", "journalctl", "journalctl *"]
       },
       "action": "allow"
     },
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["cmp -s *", "systemctl list-units *", "systemctl list-unit-files *", "systemctl is-active", "systemctl is-active *", "curl -fsS http://localhost:*", "curl -fsS http://127.0.0.1:*"]
+        "cmd": ["cmp -s *", "systemctl list-units *", "systemctl list-unit-files *", "systemctl is-active", "systemctl is-active *", "curl -fsS http://localhost:*", "curl -fsS http://127.0.0.1:*", "/^curl -fsSL https:\\/\\/([A-Za-z0-9-]+\\.)*sandwichboard\\.ai\\/[A-Za-z0-9._~:\\/?#[\\]@!$&'()*+,;=%-]*$/"]
       },
       "action": "allow"
     },
@@ -70,7 +77,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["npx prettier --check *", "npx --yes prettier --check *", "npx prettier --list-different *", "npx --yes prettier --list-different *", "/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check \"admin/js/**/*.js\" \"js/**/*.js\""]
+        "cmd": ["npx prettier --check *", "npx --yes prettier --check *", "npx prettier --list-different *", "npx --yes prettier --list-different *", "/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check *", "/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --list-different *"]
       },
       "action": "allow"
     },
@@ -84,7 +91,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["nl -ba * | sed -n *", "sed -n *", "sed -e *", "/^awk 'NR>=[0-9]+ && NR<=[0-9]+ \\{print\\}'$/"]
+        "cmd": ["nl -ba * | sed -n *", "sed", "sed *", "gsed", "gsed *", "/^awk 'NR>=[0-9]+ && NR<=[0-9]+ \\{print\\}'$/"]
       },
       "action": "allow"
     },
@@ -126,7 +133,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git branch --list", "git branch --list *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
+        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git branch --list", "git branch --list *", "git check-ignore", "git check-ignore *", "git -C * check-ignore", "git -C * check-ignore *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
       },
       "action": "allow"
     },
@@ -175,7 +182,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["~/SandwichBoard/scripts/dev-server.sh --status", "~/SandwichBoard/scripts/dev-server.sh -s", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh --status", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s"]
+        "cmd": ["~/SandwichBoard/scripts/dev-server.sh --status", "~/SandwichBoard/scripts/dev-server.sh -s", "~/SandwichBoard/scripts/dev-server.sh sandwichboard-backend current", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh --status", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s", "/home/ec2-user/SandwichBoard/scripts/dev-server.sh sandwichboard-backend current"]
       },
       "action": "allow"
     },

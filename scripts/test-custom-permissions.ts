@@ -74,6 +74,7 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'gh issue comment 249 --body "looks good" --repo photoopapp/photoop-product', expected: { action: 'allow', source: 'user' } },
 	// shell_command tool (used by sub-agents/MCP) must hit the same user rules as Bash
 	{ tool: 'shell_command', cmd: "sed -n '1,140p' app/main.py && sed -n '320,380p' app/main.py", expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: "find db/migrations_yoyo -maxdepth 1 -type f | sed 's#.*/##' | sort -V | tail -80", expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'cat foo | head', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'cd ~/photoop-backend && rg "tickets_module\\." app/routes/sandwichboard_admin_tickets.py | head -30', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'terraform init', expected: { action: 'allow', source: 'user' } },
@@ -93,6 +94,9 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: './scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'relative local_psql still asks with --write' },
 	{ tool: 'Bash', cmd: '~/photoop-backend/scripts/local_psql.sh --write -c "UPDATE x"', expected: { action: 'ask', source: 'default' }, note: 'user rule allows; tightener asks because of --write' },
 	{ tool: 'Bash', cmd: 'git worktree remove ../wt', expected: { action: 'ask', source: 'default' }, note: 'user rule allows git worktree *; tightener asks on `git worktree remove`' },
+	{ tool: 'shell_command', cmd: "sed 's/a/b/e' README.md", expected: { action: 'ask', source: 'default' }, note: 'user rule allows sed *; tightener asks on substitution e flag' },
+	{ tool: 'shell_command', cmd: "sed 's/a/b/w out.txt' README.md", expected: { action: 'ask', source: 'default' }, note: 'user rule allows sed *; tightener asks on substitution w flag' },
+	{ tool: 'shell_command', cmd: "sed -f script.sed README.md", expected: { action: 'ask', source: 'default' }, note: 'user rule allows sed *; tightener asks on sed script files' },
 	{ tool: 'Bash', cmd: "sed -n '470,580p' ~/photoop-infrastructure/terraform/environments/prod/main.tf", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: "sed -n '1,140p' db/migrations_yoyo/0016_outreach_smartlead_registry.sql 2>/dev/null", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: "sed -n '1,140p' db/migrations_yoyo/0016_outreach_smartlead_registry.sql >/dev/null 2>&1", expected: { action: 'allow', source: 'custom' } },
@@ -152,6 +156,7 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: 'sleep 20; tmux capture-pane -p -S -200 -t "sbw-scoring-cleanup" | tail -80', expected: { action: 'allow', source: 'custom' } },
 	// Read-only service/local health inspection
 	{ tool: 'Bash', cmd: 'cmp -s templates/report-image.html templates/report-image-email.html && echo identical', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'readlink -f /var/www/sandwichboard-wt; rg -n "Website Tune-up detector cache report export|detector-cache report exports" /var/www/sandwichboard-wt/admin/documentation/technical -S; rg -n "sandwichboard-wt|wt-admin|documentation" ~/photoop-infrastructure/nginx /etc/nginx /usr/local/openresty/nginx/conf 2>/dev/null', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: "systemctl list-units --type=service --all --no-pager | rg -i 'sandwich|workflow|worker|openresty|nginx'", expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: "systemctl list-unit-files --type=service --no-pager | rg -i 'sandwich|workflow|worker|openresty|nginx'", expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'systemctl is-active openresty sandwichboard-backend', expected: { action: 'allow', source: 'user' } },
@@ -169,6 +174,9 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: "sed -n '1,140p' AGENTS.md 2>/dev/null || true && git status --short", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git status --short', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git branch --list website-tune-up-navigation && test -d /home/ec2-user/worktrees/sandwichboard-workflow/website-tune-up-navigation && echo exists || true', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'find . -maxdepth 2 -name node_modules -type d -prune -print && git check-ignore -v node_modules || true', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '[ -d /home/ec2-user/sandwichboard-backend/.venv ] && ln -sfn /home/ec2-user/sandwichboard-backend/.venv .venv; [ -f /home/ec2-user/sandwichboard-backend/.env ] && cp -P /home/ec2-user/sandwichboard-backend/.env .env || true; git status --short --branch', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'cp -P /home/ec2-user/.ssh/id_rsa .env', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'git fetch origin develop', expected: { action: 'allow', source: 'user' } },
 	{
 		tool: 'Bash',
@@ -189,6 +197,7 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'npx prettier --check admin/js/admin-campaign-qa.js', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'npx prettier --write admin/js/admin-campaign-qa.js', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'npx --yes prettier --write "admin/**/*.js"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check admin/js/admin.js', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --check "admin/js/**/*.js" "js/**/*.js"', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/node_modules/.bin/prettier --write "admin/js/**/*.js" "js/**/*.js"', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'ruff format app tests', expected: { action: 'allow', source: 'user' } },
@@ -228,8 +237,12 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'shell_command', cmd: "curl -k -s https://wt-admin.sandwichboard.ai/marketing-site/ | rg 'admin-marketing-site|admin-sidebar'", expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status?check=1', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'curl -fsSL https://wt-admin.sandwichboard.ai/documentation/technical/workflow-throughput/ | rg -n "Website Tune-up detector cache report export|export_website_tune_up_detector_stats_doc|Do not start fresh crawls"', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'curl -fsSL https://wt-admin.sandwichboard.ai/documentation/technical/ | rg -n "detector-cache report exports|Workflow throughput baseline"', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'curl -k -s https://example.com/status', expected: { action: 'ask', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'curl -fsSL https://example.com/status', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'curl -k -s https://sandwichboard.ai/status > output.html', expected: { action: 'ask', source: 'builtin' } },
+	{ tool: 'Bash', cmd: 'curl -fsSL https://sandwichboard.ai/status -o output.html', expected: { action: 'ask', source: 'builtin' } },
 	// SandwichBoard worktree helper is an approved local workflow script
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: '/home/ec2-user/SandwichBoard/scripts/worktree-start.sh sandwichboard-backend 456', expected: { action: 'allow', source: 'user' } },
@@ -237,9 +250,12 @@ const cases: TestCase[] = [
 	{ tool: 'shell_command', cmd: './scripts/worktree-start.sh photoop-backend 789', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'scripts/worktree-start.sh SandwichBoard 123', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '~/SandwichBoard/scripts/worktree-land.sh SandwichBoard 123 -m "Land issue"', expected: { action: 'ask', source: 'builtin' } },
-	// SandwichBoard dev-server status is read-only; start/stop operations should still prompt.
+	// SandwichBoard dev-server status and backend-current preview start are approved local workflow commands.
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '/home/ec2-user/SandwichBoard/scripts/dev-server.sh -s', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh sandwichboard-backend current && ~/SandwichBoard/scripts/dev-server.sh --status', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'Bash', cmd: '/home/ec2-user/SandwichBoard/scripts/dev-server.sh sandwichboard-backend current', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh sandwichboard current', expected: { action: 'ask', source: 'builtin' } },
 	{ tool: 'shell_command', cmd: '~/SandwichBoard/scripts/dev-server.sh --stop', expected: { action: 'ask', source: 'builtin' } },
 	{
 		tool: 'shell_command',
