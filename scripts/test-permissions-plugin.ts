@@ -30,6 +30,9 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: "sed -f script.sed README.md", expected: 'ask' },
 	{ command: "python -c 'print(1)'", expected: 'ask' },
 	{ command: "AWS_PROFILE=photoop python -c 'print(1)'", expected: 'ask' },
+	{ command: 'python scripts/generate_cached_website_tune_up_reports.py --help', expected: 'allow' },
+	{ command: 'uv run python scripts/generate_cached_website_tune_up_reports.py --help', expected: 'allow' },
+	{ command: 'python scripts/generate_cached_website_tune_up_reports.py --write', expected: 'ask' },
 	{ command: 'AWS_PROFILE=photoop ls', expected: 'allow' },
 	{ command: 'find . -name node_modules -delete', expected: 'ask' },
 	{ command: 'gh issue close 123 --repo photoopapp/photoop-product', expected: 'ask' },
@@ -49,6 +52,8 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: 'aws ec2 terminate-instances --instance-ids i-1', expected: 'ask' },
 	{ command: 'aws --profile p --region us-east-1 ec2 describe-instances', expected: 'allow' },
 	{ command: 'aws ec2', expected: 'ask' },
+	{ command: 'bash -lc "aws sqs get-queue-attributes --queue-url https://sqs.us-east-1.amazonaws.com/247688347937/sbw-prod-upload --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible ApproximateNumberOfMessagesDelayed --region us-east-1"', expected: 'allow' },
+	{ command: 'bash -lc "aws ec2 terminate-instances --instance-ids i-1"', expected: 'ask' },
 	// Command/process substitution and backticks
 	{ command: 'export SSH_AUTH_SOCK=$(ls -d /tmp/ssh-XXX*/agent.* 2>/dev/null | head -1); git fetch origin develop && git status --short --branch', expected: 'allow' },
 	{ command: 'aws ec2 describe-instances $(rm -rf /)', expected: 'ask' },
@@ -57,7 +62,12 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: 'diff <(echo a) <(echo b)', expected: 'ask' },
 	// Single-quoted substitution markers should NOT trigger (they're literal)
 	{ command: "echo '$(date)'", expected: 'allow' },
+	{ command: 'bash -lc \'source scripts/load_runtime_env.sh >/dev/null && env | rg "^(SBW_RENDER|SBW_AEO|AWS_REGION|DB_HOST|DB_NAME|DB_USER)="\'', expected: 'allow' },
+	{ command: 'bash -lc \'source scripts/load_runtime_env.sh >/dev/null && env | rg "^(PASSWORD|SECRET)="\'', expected: 'ask' },
+	{ command: 'bash -lc "source /home/ec2-user/sandwichboard-workflow/scripts/load_runtime_env.sh >/dev/null; env | rg \'UPLOAD|QUEUE|SQS|ENVIRONMENT|SBW\' | sed -E \'s/(KEY|SECRET|TOKEN|PASSWORD)=.*/\\1=<redacted>/\'"', expected: 'allow' },
+	{ command: 'bash -lc "source /home/ec2-user/sandwichboard-workflow/scripts/load_runtime_env.sh >/dev/null; env | rg \'UPLOAD|QUEUE|SQS|ENVIRONMENT|SBW\'"', expected: 'ask' },
 	// Subshell grouping
+	{ command: '(crontab -l 2>/dev/null || true)', expected: 'allow' },
 	{ command: '(rm -rf /)', expected: 'ask' },
 	{ command: '{ rm -rf /; }', expected: 'ask' },
 	// local_psql.sh: read-only by default, asks when --write is present so the

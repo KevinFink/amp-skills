@@ -14,14 +14,14 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["true", "false", ":", "test -d /home/ec2-user/worktrees/*"]
+        "cmd": ["true", "false", ":", "test -d /home/ec2-user/worktrees/*", "test -e /home/ec2-user/worktrees/*", "crontab -l", "crontab -l *", "(crontab -l *", "true)", "/^\\[ -[de] \\/home\\/ec2-user\\/worktrees\\/[A-Za-z0-9._~+\\/-]+ \\]$/"]
       },
       "action": "allow"
     },
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["/^\\[ -d \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\]$/", "/^ln -sfn \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\.venv$/", "/^\\[ -f \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\]$/", "/^cp -P \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\.env$/"]
+        "cmd": ["/^\\[ -d \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\]$/", "/^ln -sfn \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.venv \\.venv$/", "/^\\[ -f \\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\]$/", "/^cp (-P )?\\/home\\/ec2-user\\/(photoop-backend|sandwichboard-backend|sandwichboard-workflow)\\/\\.env \\.env$/"]
       },
       "action": "allow"
     },
@@ -42,7 +42,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["cmp -s *", "systemctl list-units *", "systemctl list-unit-files *", "systemctl is-active", "systemctl is-active *", "curl -fsS http://localhost:*", "curl -fsS http://127.0.0.1:*", "/^curl -fsSL https:\\/\\/([A-Za-z0-9-]+\\.)*sandwichboard\\.ai\\/[A-Za-z0-9._~:\\/?#[\\]@!$&'()*+,;=%-]*$/"]
+        "cmd": ["cmp -s *", "systemctl list-units *", "systemctl list-unit-files *", "systemctl list-timers", "systemctl list-timers *", "systemctl is-active", "systemctl is-active *", "systemctl status", "systemctl status *", "/^systemctl show [A-Za-z0-9_.@:-]+(?:\\s+[A-Za-z0-9_.@:-]+)* (?:-p (?:ActiveState|UnitFileState|NextElapseUSecRealtime|LastTriggerUSecRealtime|Result|ExecMainStatus|ExecMainCode|ExecMainStartTimestamp|ExecMainExitTimestamp|NRestarts)\\s*)+--no-pager$/", "curl -fsS http://localhost:*", "curl -fsS http://127.0.0.1:*", "/^curl -fsSL https:\\/\\/([A-Za-z0-9-]+\\.)*sandwichboard\\.ai\\/[A-Za-z0-9._~:\\/?#[\\]@!$&'()*+,;=%-]*$/", "/^curl -sS -i ['\"]https:\\/\\/([A-Za-z0-9-]+\\.)*sandwichboard\\.ai\\/[A-Za-z0-9._~:\\/?#[\\]@!$&()*+,;=%-]*['\"]$/"]
       },
       "action": "allow"
     },
@@ -105,7 +105,14 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["node --check *", "node --check * && echo *", "bash -n *", "sh -n *"]
+        "cmd": ["node --check *", "node --check * && echo *", "bash -n *", "sh -n *", "/^bash -lc 'source scripts\\/load_runtime_env\\.sh >\\/dev\\/null && env \\| rg \"\\^\\(SBW_RENDER\\|SBW_AEO\\|AWS_REGION\\|DB_HOST\\|DB_NAME\\|DB_USER\\)=\"'$/", "bash -lc \"source /home/ec2-user/sandwichboard-workflow/scripts/load_runtime_env.sh >/dev/null; env | rg 'UPLOAD|QUEUE|SQS|ENVIRONMENT|SBW' | sed -E 's/(KEY|SECRET|TOKEN|PASSWORD)=.*/\\1=<redacted>/'\""]
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "/^(Bash|shell_command)$/",
+      "matches": {
+        "cmd": ["/^(\\.\\/)?scripts\\/[A-Za-z0-9._-]+\\.sh(?:\\s+[^;&|]*)?\\s--help(?:\\s|$)[^;&|]*$/", "/^(uv run )?python3? (\\.\\/)?scripts\\/[A-Za-z0-9._-]+\\.py(?:\\s+[^;&|]*)?\\s--help(?:\\s|$)[^;&|]*$/"]
       },
       "action": "allow"
     },
@@ -133,7 +140,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["git status", "git status *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git branch --list", "git branch --list *", "git check-ignore", "git check-ignore *", "git -C * check-ignore", "git -C * check-ignore *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
+        "cmd": ["git status", "git status *", "git rev-parse", "git rev-parse *", "git -C * rev-parse", "git -C * rev-parse *", "git ls-files", "git ls-files *", "git -C * ls-files", "git -C * ls-files *", "git -C * status*", "git -C * log", "git -C * log *", "git -C * show", "git -C * show *", "git -C * diff", "git -C * diff *", "git -C * branch", "git -C * branch *", "git branch --list", "git branch --list *", "git check-ignore", "git check-ignore *", "git -C * check-ignore", "git -C * check-ignore *", "git -C * remote", "git -C * remote *", "git remote", "git remote -v", "git remote show", "git remote show *", "git remote get-url", "git remote get-url *", "git fetch", "git fetch *", "git -C * fetch", "git -C * fetch *"]
       },
       "action": "allow"
     },
@@ -161,7 +168,7 @@
     {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
-        "cmd": ["aws * list-*", "aws * describe-*", "aws * get-*", "aws * show-*", "aws * head-*", "aws * scan", "aws * scan *"]
+        "cmd": ["aws * list-*", "aws * describe-*", "aws * get-*", "aws * show-*", "aws * head-*", "aws * scan", "aws * scan *", "/^bash -lc [\"']aws [^\"'`$;&|()<>\\r\\n]+[\"']$/"]
       },
       "action": "allow"
     },

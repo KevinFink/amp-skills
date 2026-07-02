@@ -110,6 +110,9 @@ function checkForCommandSubstitution(segment: string): TightenerDecision {
 
 function checkForSubshell(segment: string): TightenerDecision {
 	const trimmed = segment.trimStart()
+	if (/^\(crontab -l(?:\s|$)/.test(trimmed)) {
+		return { kind: 'allow', reason: 'Parenthesized crontab -l fallback is read-only cron inspection.' }
+	}
 	if (trimmed.startsWith('(') || trimmed.startsWith('{ ')) {
 		return { kind: 'ask', reason: 'Subshell or grouping wraps a command and bypasses per-command checks.' }
 	}
@@ -218,6 +221,10 @@ function evaluatePython(args: string[], segment: string): TightenerDecision {
 		return { kind: 'allow', reason: 'Python informational flag.' }
 	}
 
+	if (isRepoPythonScriptHelp(args)) {
+		return { kind: 'allow', reason: 'Python repo script help output is expected to be side-effect free.' }
+	}
+
 	if (args[0] === '-m') {
 		const moduleName = args[1]
 		if (moduleName === 'py_compile' || moduleName === 'compileall') {
@@ -240,6 +247,14 @@ function evaluatePython(args: string[], segment: string): TightenerDecision {
 	return { kind: 'ask', reason: `Python script execution (${args[0]}) can run arbitrary code.` }
 }
 
+function isRepoPythonScriptHelp(args: string[]): boolean {
+	const scriptIndex = args.findIndex((arg) => /^(\.\/)?scripts\/[A-Za-z0-9._-]+\.py$/.test(arg))
+	if (scriptIndex === -1) {
+		return false
+	}
+	return args.slice(scriptIndex + 1).includes('--help') || args.slice(scriptIndex + 1).includes('-h')
+}
+
 function evaluateShellInterpreter(command: string, args: string[], segment: string): TightenerDecision {
 	if (args.length === 0) {
 		return { kind: 'ask', reason: `${command} without arguments opens an interactive shell.` }
@@ -253,6 +268,14 @@ function evaluateShellInterpreter(command: string, args: string[], segment: stri
 		return { kind: 'allow', reason: `${command} -n syntax check.` }
 	}
 
+	if (isRuntimeEnvInspectionShellCommand(command, segment)) {
+		return { kind: 'allow', reason: 'Shell command only sources runtime env and prints approved non-secret variable names.' }
+	}
+
+	if (isReadOnlyAwsShellCommand(command, segment)) {
+		return { kind: 'allow', reason: 'Shell command wraps a read-only AWS CLI inspection command.' }
+	}
+
 	if (args.includes('-c') || args.some((arg) => arg.startsWith('-c'))) {
 		return { kind: 'ask', reason: `${command} -c executes arbitrary inline shell code.` }
 	}
@@ -262,6 +285,25 @@ function evaluateShellInterpreter(command: string, args: string[], segment: stri
 	}
 
 	return { kind: 'ask', reason: `${command} script execution (${args[0]}) can run arbitrary shell code.` }
+}
+
+function isRuntimeEnvInspectionShellCommand(command: string, segment: string): boolean {
+	if (command !== 'bash') {
+		return false
+	}
+	return segment === 'bash -lc \'source scripts/load_runtime_env.sh >/dev/null && env | rg "^(SBW_RENDER|SBW_AEO|AWS_REGION|DB_HOST|DB_NAME|DB_USER)="\''
+		|| segment === "bash -lc \"source /home/ec2-user/sandwichboard-workflow/scripts/load_runtime_env.sh >/dev/null; env | rg 'UPLOAD|QUEUE|SQS|ENVIRONMENT|SBW' | sed -E 's/(KEY|SECRET|TOKEN|PASSWORD)=.*/\\1=<redacted>/'\""
+}
+
+function isReadOnlyAwsShellCommand(command: string, segment: string): boolean {
+	if (command !== 'bash') {
+		return false
+	}
+	const match = /^bash -lc (["'])(aws [^"'`$;&|()<>\r\n]+)\1$/.exec(segment)
+	if (!match) {
+		return false
+	}
+	return evaluateShellCommand(match[2]).kind === 'allow'
 }
 
 function evaluateNode(args: string[], segment: string): TightenerDecision {
