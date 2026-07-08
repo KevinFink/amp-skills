@@ -122,7 +122,7 @@ export default function (amp: PluginAPI) {
 	})
 
 	amp.on('tool.call', async (event, ctx): Promise<ToolCallResult> => {
-		const cmd = amp.helpers.shellCommandFromToolCall(event)?.command
+		const cmd = shellCommandFromToolCall(amp, event)
 		const decision = classifyPermissionDecision(event.tool, cmd, turnIntents.get(event.thread.id))
 
 		if (decision.action === 'allow') {
@@ -165,23 +165,78 @@ export function classifyPermissionDecision(tool: string, cmd: string | undefined
 	return decision
 }
 
+function shellCommandFromToolCall(amp: PluginAPI, event: Parameters<Parameters<PluginAPI['on']>[1]>[0]): string | undefined {
+	const command = amp.helpers.shellCommandFromToolCall(event)?.command
+	if (command !== undefined) {
+		return command
+	}
+
+	if (event.tool !== 'async_shell_command') {
+		return undefined
+	}
+
+	return findNestedCommand(event)
+}
+
+export function findNestedCommand(value: unknown, seen = new Set<unknown>()): string | undefined {
+	if (typeof value !== 'object' || value === null) {
+		return undefined
+	}
+	if (seen.has(value)) {
+		return undefined
+	}
+	seen.add(value)
+
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			const command = findNestedCommand(item, seen)
+			if (command !== undefined) {
+				return command
+			}
+		}
+		return undefined
+	}
+
+	const record = value as Record<string, unknown>
+	if (typeof record.command === 'string') {
+		return record.command
+	}
+
+	for (const nestedValue of Object.values(record)) {
+		const command = findNestedCommand(nestedValue, seen)
+		if (command !== undefined) {
+			return command
+		}
+	}
+
+	return undefined
+}
+
+function isShellTool(tool: string): boolean {
+	return tool === 'Bash' || tool === 'shell_command' || tool === 'async_shell_command'
+}
+
+function ruleToolName(tool: string): string {
+	return tool === 'async_shell_command' ? 'shell_command' : tool
+}
+
 export function decide(userRules: Rule[], builtinRules: Rule[], tool: string, cmd: string | undefined, turnIntent?: TurnIntent): Decision {
-	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && gitStagingOrCommitRequested(cmd)) {
+	if (isShellTool(tool) && cmd !== undefined && gitStagingOrCommitRequested(cmd)) {
 		if (turnIntent?.gitCommitRequested) {
 			return { action: 'allow', rule: null, source: 'custom' }
 		}
 		return { action: 'ask', rule: null, source: 'default' }
 	}
 
-	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && turnIntent?.gitLandingRequested && gitLandingCommandRequested(cmd)) {
+	if (isShellTool(tool) && cmd !== undefined && turnIntent?.gitLandingRequested && gitLandingCommandRequested(cmd)) {
 		return { action: 'allow', rule: null, source: 'custom' }
 	}
 
-	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined && turnIntent?.gitLandingRequested && worktreeLandingScriptRequested(cmd)) {
+	if (isShellTool(tool) && cmd !== undefined && turnIntent?.gitLandingRequested && worktreeLandingScriptRequested(cmd)) {
 		return { action: 'allow', rule: null, source: 'custom' }
 	}
 
-	if ((tool === 'Bash' || tool === 'shell_command') && cmd !== undefined) {
+	if (isShellTool(tool) && cmd !== undefined) {
 		const segments = splitShellSegments(cmd)
 		if (segments.length > 1) {
 			// Multi-segment commands are evaluated per segment so that broad
@@ -482,7 +537,7 @@ function findCommandSubstitutionEnd(command: string, startIndex: number): number
 }
 
 function ruleMatches(rule: Rule, tool: string, cmd: string | undefined): boolean {
-	if (!patternMatches(rule.tool, tool)) {
+	if (!patternMatches(rule.tool, ruleToolName(tool))) {
 		return false
 	}
 	const cmdPatterns = rule.matches?.cmd ?? rule.matches?.command

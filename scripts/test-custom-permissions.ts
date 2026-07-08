@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { classifyPermissionDecision, decide, isUITimeoutError, permissionReasonForCommand, type Rule } from '../plugins/custom-permissions/custom-permissions'
+import { classifyPermissionDecision, decide, findNestedCommand, isUITimeoutError, permissionReasonForCommand, type Rule } from '../plugins/custom-permissions/custom-permissions'
 import { stripKnownTitleStatuses } from '../plugins/custom-permissions/thread-title-status'
 import { textNeedsUserAction } from '../plugins/custom-permissions/thread-wait-status'
 import { evaluateShellCommand } from '../plugins/custom-permissions/tighteners'
@@ -45,7 +45,9 @@ interface TestCase {
 const cases: TestCase[] = [
 	// User rules from settings.json win over built-in
 	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
+	{ tool: 'async_shell_command', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: 'git add foo', message: 'commit', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'async_shell_command', cmd: 'git add foo', message: 'commit', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git commit -m "update"', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: 'git commit -m "update"', message: 'Please commit these changes', expected: { action: 'allow', source: 'custom' } },
 	{ tool: 'Bash', cmd: 'git -C ~/repo add foo && git -C ~/repo commit -m "update"', message: 'ship it', expected: { action: 'allow', source: 'custom' } },
@@ -65,6 +67,7 @@ const cases: TestCase[] = [
 	{ tool: 'Bash', cmd: 'gh run view 25608940296 --repo PhotoOpApp/photoop-infrastructure --log-failed 2>&1 | head -200', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'gh run view 25608940296 --repo PhotoOpApp/photoop-infrastructure --log-failed 2>&1 | head -200', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'async_shell_command', cmd: 'gh issue list --repo PhotoOpApp/SandwichBoard --state all', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'amp plugins show-docs', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'shell_command', cmd: 'amp plugins show-docs custom-permissions', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: '/home/ec2-user/amp-skills/skills/managing-master-threads/scripts/spawn-amp-child-thread --name api-investigation --title "Child: API investigation" -- "Investigate and report back."', expected: { action: 'allow', source: 'user' } },
@@ -430,6 +433,15 @@ if (backtickDecision.action !== 'ask' || !backtickDecision.reason?.includes('sin
 	console.error(`  actual: ${JSON.stringify(backtickDecision)}`)
 } else {
 	console.log('PASS classifyPermissionDecision :: backtick search reason')
+}
+
+const nestedCommand = findNestedCommand({ tool: 'async_shell_command', payload: { data: { args: { command: 'git status --short' } } } })
+if (nestedCommand !== 'git status --short') {
+	failures += 1
+	console.error('FAIL findNestedCommand :: nested async shell command args')
+	console.error(`  actual: ${nestedCommand}`)
+} else {
+	console.log('PASS findNestedCommand :: nested async shell command args')
 }
 
 if (failures > 0) {
