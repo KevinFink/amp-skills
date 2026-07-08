@@ -5,6 +5,10 @@
   "amp.updates.mode": "auto",
   "amp.permissions": [
     {
+      "tool": "shell_command_status",
+      "action": "allow"
+    },
+    {
       "tool": "/^(Bash|shell_command)$/",
       "matches": {
         "cmd": ["printf *", "/home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack", "~/amp-skills/skills/notify-slack/toolbox/notify-slack"]
