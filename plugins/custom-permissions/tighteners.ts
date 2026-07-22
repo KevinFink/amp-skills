@@ -225,6 +225,10 @@ function evaluatePython(args: string[], segment: string): TightenerDecision {
 		return { kind: 'allow', reason: 'Python repo script help output is expected to be side-effect free.' }
 	}
 
+	if (isSafePythonPackageVersionProbe(args)) {
+		return { kind: 'allow', reason: 'Python inline code is limited to printing six package file/version metadata.' }
+	}
+
 	if (args[0] === '-m') {
 		const moduleName = args[1]
 		if (moduleName === 'py_compile' || moduleName === 'compileall') {
@@ -253,6 +257,12 @@ function isRepoPythonScriptHelp(args: string[]): boolean {
 		return false
 	}
 	return args.slice(scriptIndex + 1).includes('--help') || args.slice(scriptIndex + 1).includes('-h')
+}
+
+function isSafePythonPackageVersionProbe(args: string[]): boolean {
+	return args.length === 2
+		&& args[0] === '-c'
+		&& args[1] === 'import six, importlib.metadata; print(six.__file__); print(importlib.metadata.version("six"))'
 }
 
 function evaluateShellInterpreter(command: string, args: string[], segment: string): TightenerDecision {

@@ -337,6 +337,17 @@ const cases: TestCase[] = [
 		cmd: "printf 'status: needs_attention\\nsummary: Need input.\\n' | /home/ec2-user/amp-skills/skills/notify-slack/toolbox/notify-slack",
 		expected: { action: 'allow', source: 'user' },
 	},
+	{
+		tool: 'shell_command',
+		cmd: "sed -n '40,75p' publisher/src/book_publisher/core.py; sed -n '760,900p' publisher/src/book_publisher/core.py; sed -n '1185,1260p' publisher/src/book_publisher/core.py; printf '%s\\n' '--- exact dist/package versions inside archive files ---'; unzip -l book-sites-remote-transform.zip | rg '(dist-info|egg-info|botocore/data/s3/2006-03-01/service)' | head -80; printf '%s\\n' '--- top-level dependency init versions ---'; unzip -p book-sites-remote-transform.zip boto3/__init__.py | head -30; unzip -p book-sites-remote-transform.zip botocore/__init__.py | head -30; unzip -p book-sites-remote-transform.zip s3transfer/__init__.py | head -30",
+		expected: { action: 'allow', source: 'custom' },
+	},
+	{ tool: 'shell_command', cmd: 'unzip book-sites-remote-transform.zip', expected: { action: 'ask', source: 'builtin' } },
+	{
+		tool: 'shell_command',
+		cmd: "rg -n '^PLAN_ID_RE|def _validate_metadata|six' publisher/src/book_publisher/core.py remote-transform/handler.py; printf '%s\\n' '--- zip six check ---'; unzip -l book-sites-remote-transform.zip | rg '(^|/)(six(\\.py|/)|.*dist-info)' || true; printf '%s\\n' '--- dateutil six imports ---'; unzip -p book-sites-remote-transform.zip dateutil/tz/tz.py | rg -n '^import six|from six|six\\.' | head -20; unzip -p book-sites-remote-transform.zip dateutil/parser/_parser.py | rg -n '^import six|from six|six\\.' | head -20; printf '%s\\n' '--- local six source/version ---'; publisher/.venv/bin/python -c 'import six, importlib.metadata; print(six.__file__); print(importlib.metadata.version(\"six\"))'",
+		expected: { action: 'allow', source: 'user' },
+	},
 	// Built-in defaults
 	{ tool: 'Bash', cmd: 'ls', expected: { action: 'allow', source: 'builtin' } },
 	{ tool: 'Bash', cmd: 'echo hello', expected: { action: 'allow', source: 'builtin' } },

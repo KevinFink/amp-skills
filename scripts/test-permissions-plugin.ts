@@ -30,6 +30,7 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: "sed -f script.sed README.md", expected: 'ask' },
 	{ command: "python -c 'print(1)'", expected: 'ask' },
 	{ command: "AWS_PROFILE=photoop python -c 'print(1)'", expected: 'ask' },
+	{ command: 'publisher/.venv/bin/python -c \'import six, importlib.metadata; print(six.__file__); print(importlib.metadata.version("six"))\'', expected: 'allow' },
 	{ command: 'python scripts/generate_cached_website_tune_up_reports.py --help', expected: 'allow' },
 	{ command: 'uv run python scripts/generate_cached_website_tune_up_reports.py --help', expected: 'allow' },
 	{ command: 'python scripts/generate_cached_website_tune_up_reports.py --write', expected: 'ask' },
