@@ -5,8 +5,9 @@ evaluates the same `amp.permissions` user rules + a snapshotted copy of Amp's
 built-in rules, but every prompt uses the plugin's confirm modal instead of
 Amp's built-in modal.
 
-This plugin is **opt-in** and not auto-installed by `scripts/install.sh`
-(which only globs `plugins/*.ts`, not subdirectories).
+This plugin is installed by `scripts/install.sh` in this repository. The script
+symlinks top-level plugins from `plugins/*.ts` and also explicitly symlinks this
+plugin as `~/.config/amp/plugins/custom-permissions.ts`.
 
 ## How it works
 
@@ -33,7 +34,7 @@ treated as JS regex.
    ```bash
    ./scripts/refresh-builtin-permissions.sh
    ```
-2. Symlink the plugin into Amp's plugin directory:
+2. Symlink the plugin into Amp's plugin directory, or run `./scripts/install.sh`:
    ```bash
    ln -sf "$(pwd)/plugins/custom-permissions/custom-permissions.ts" \
        ~/.config/amp/plugins/
