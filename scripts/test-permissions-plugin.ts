@@ -72,7 +72,7 @@ const cases: Array<{ command: string; expected: ExpectedDecision }> = [
 	{ command: '(rm -rf /)', expected: 'ask' },
 	{ command: '{ rm -rf /; }', expected: 'ask' },
 	// local_psql.sh: read-only by default, asks when --write is present so the
-	// plugin can override the broad allow rule in settings.json.
+	// plugin can override the broad allow rule in user-rules.json.
 	{ command: '~/photoop-backend/scripts/local_psql.sh', expected: 'allow' },
 	{ command: '~/photoop-backend/scripts/local_psql.sh -c "SELECT version()"', expected: 'allow' },
 	{ command: '/home/ec2-user/photoop-backend/scripts/local_psql.sh -c "SELECT 1"', expected: 'allow' },

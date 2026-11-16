@@ -4,7 +4,7 @@ Custom [Amp](https://ampcode.com) skills and settings.
 
 ## Setup
 
-Run the installer to symlink settings and plugins, then register skills:
+Run the installer to link settings and top-level plugins, install the permissions entrypoint, and register skills:
 
 ```bash
 ./scripts/install.sh
@@ -16,12 +16,18 @@ Or perform the steps manually. Symlink the settings file so Amp reads it:
 ln -sf "$(pwd)/settings.json" ~/.config/amp/settings.json
 ```
 
-Symlink tracked top-level plugins plus the custom permissions plugin so Amp loads the same user-wide plugins on every machine:
+Symlink tracked top-level plugins and create a real permissions entrypoint (Amp's single-plugin loader rejects symlinks):
 
 ```bash
 mkdir -p ~/.config/amp/plugins
 ln -sf "$(pwd)"/plugins/*.ts ~/.config/amp/plugins/
-ln -sf "$(pwd)/plugins/custom-permissions/custom-permissions.ts" ~/.config/amp/plugins/custom-permissions.ts
+if [ -L ~/.config/amp/plugins/custom-permissions.ts ]; then
+  unlink ~/.config/amp/plugins/custom-permissions.ts
+fi
+python3 - "$(pwd)" <<'PY' > ~/.config/amp/plugins/custom-permissions.ts
+import json, sys
+print('export { default, description } from ' + json.dumps(sys.argv[1] + '/plugins/custom-permissions/custom-permissions.ts'))
+PY
 ```
 
 Register the skills directory so Amp can discover skills. `amp skill` is the canonical command name in current Amp versions; `amp skills` may still work as a compatibility alias.
@@ -34,20 +40,19 @@ amp skill add ./skills/*
 
 ### settings.json
 
-Baseline Amp configuration: skills path, cache directory, update mode, disabled tools, and the `amp.permissions` user-rule layer consumed by the custom permissions plugin below. `amp.dangerouslyAllowAll` is intentionally enabled so Amp's legacy permissions surface is silenced; the custom plugin is the active authorization check. See the [Amp permissions docs](https://ampcode.com/manual#permissions) for the rule format.
+Baseline Amp configuration: skills path, cache directory, update mode, and disabled tools. Permission policy belongs to the custom plugin, not Amp's deprecated settings. See the [Amp permissions docs](https://ampcode.com/docs/tools#permissions).
 
 For permission changes:
 
-- Add simple allow/ask/reject glob or regex rules to `amp.permissions` in `settings.json`, then add a case to `scripts/test-custom-permissions.ts`.
+- Add simple allow/ask/reject glob or regex rules to `plugins/custom-permissions/user-rules.json`, then add a case to `scripts/test-custom-permissions.ts`.
 - Add heuristic or conditional safety checks that cannot be expressed as a glob to `plugins/custom-permissions/tighteners.ts`, then add a case to `scripts/test-permissions-plugin.ts`.
 - Run both test scripts after changing the authorization system.
 
 ### plugins/custom-permissions/
 
-A single user-wide Amp plugin that replaces Amp's legacy permissions plugin. Snapshots Amp's built-in rules into `builtin-rules.json`, layers `amp.permissions` from settings.json on top, and applies heuristic tighteners (`tighteners.ts`) so every prompt uses the plugin's confirm modal. See [plugins/custom-permissions/README.md](plugins/custom-permissions/README.md) for activation details and risks. Refresh the snapshot after Amp upgrades:
+A single machine-wide Amp plugin that evaluates `user-rules.json` over the maintained baseline in `builtin-rules.json`, then applies heuristic tighteners (`tighteners.ts`). Permission dialogs require a human response. The baseline preserves the previously imported Amp defaults without depending on the deprecated permission export. See [plugins/custom-permissions/README.md](plugins/custom-permissions/README.md) for activation details and risks. Run both test scripts after changing policy:
 
 ```bash
-./scripts/refresh-builtin-permissions.sh
 bun run scripts/test-custom-permissions.ts   # cascade + segment tests
 bun run scripts/test-permissions-plugin.ts   # tightener heuristics tests
 ```

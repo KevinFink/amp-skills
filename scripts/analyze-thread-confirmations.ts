@@ -78,9 +78,7 @@ const includeRejected = args.includes('--include-rejected')
 const threadID = normalizeThreadID(threadArg)
 const repoRoot = resolve(import.meta.dir, '..')
 
-const userRules = readJson<Rule[]>(resolve(repoRoot, 'settings.json'), (settings) => {
-	return ((settings as Record<string, unknown>)['amp.permissions'] as Rule[] | undefined) ?? []
-})
+const userRules = readJson<Rule[]>(resolve(repoRoot, 'plugins/custom-permissions/user-rules.json'))
 const builtinRules = readJson<Rule[]>(resolve(repoRoot, 'plugins/custom-permissions/builtin-rules.json'))
 const thread = exportThread(threadID)
 
@@ -184,11 +182,8 @@ function normalizeThreadID(value: string): string {
 	return match ? match[0] : value
 }
 
-function readJson<T>(path: string): T
-function readJson<T>(path: string, map: (value: unknown) => T): T
-function readJson<T>(path: string, map?: (value: unknown) => T): T {
-	const parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown
-	return map ? map(parsed) : parsed as T
+function readJson<T>(path: string): T {
+	return JSON.parse(readFileSync(path, 'utf8')) as T
 }
 
 function collectObjects<T>(root: unknown, predicate: (value: Record<string, unknown>) => value is T): T[] {

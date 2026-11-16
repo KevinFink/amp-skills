@@ -1,29 +1,27 @@
 /**
  * Custom permissions plugin.
  *
- * Replaces Amp's legacy permissions plugin so every prompt uses the plugin
- * UI. To activate it, you must:
- *   1. Set `amp.dangerouslyAllowAll: true` in settings.json so the legacy
- *      plugin loads but allows everything (suppressing its own prompts).
- *   2. Symlink this file into ~/.config/amp/plugins/.
+ * Install a system-plugin entrypoint using scripts/install.sh.
+ * Policy files are resolved relative to this canonical source.
  *
  * It evaluates rules in order:
- *   1. User rules from `amp.permissions` (still read from settings.json).
- *   2. Built-in rules snapshotted in builtin-rules.json (refresh with
- *      ./scripts/refresh-builtin-permissions.sh).
+ *   1. User rules from user-rules.json.
+ *   2. The maintained baseline in builtin-rules.json, originally imported
+ *      from Amp. Neither layer depends on Amp's legacy permissions settings.
  *
  * Match semantics mirror Amp's: `tool` and `matches.cmd`/`matches.command`
  * accept globs (`*`) or `/regex/`. First match wins. If no rule matches,
  * the user is asked via the plugin's confirm modal.
  */
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PluginAPI, ThreadID, ToolCallResult } from '@ampcode/plugin'
 import builtinRulesData from './builtin-rules.json' with { type: 'json' }
 import { installThreadWaitStatus } from './thread-wait-status'
 import { THREAD_TITLE_STATUSES, ThreadTitleStatusManager } from './thread-title-status'
 import { evaluateShellCommand } from './tighteners'
+
+export const description = 'Enforces the local permission policy with human-only approval dialogs and shell safety checks.'
 
 export type Action = 'allow' | 'ask' | 'reject' | 'delegate'
 
@@ -85,28 +83,22 @@ const CUSTOM_RULES: Rule[] = [
 		action: 'allow',
 	},
 ]
-const SETTINGS_PATH = join(homedir(), '.config', 'amp', 'settings.json')
+const USER_RULES_PATH = join(import.meta.dir, 'user-rules.json')
 
-let settingsCache: { mtimeMs: number; rules: Rule[] } | null = null
+let rulesCache: { mtimeMs: number; rules: Rule[] } | null = null
 const turnIntents = new Map<string, TurnIntent>()
 
 function loadUserRules(): Rule[] {
-	if (!existsSync(SETTINGS_PATH)) {
-		return []
+	const mtimeMs = statSync(USER_RULES_PATH).mtimeMs
+	if (rulesCache && rulesCache.mtimeMs === mtimeMs) {
+		return rulesCache.rules
 	}
-	const mtimeMs = statSync(SETTINGS_PATH).mtimeMs
-	if (settingsCache && settingsCache.mtimeMs === mtimeMs) {
-		return settingsCache.rules
+	const rules = JSON.parse(readFileSync(USER_RULES_PATH, 'utf8')) as Rule[]
+	if (!Array.isArray(rules) || rules.some((rule) => !rule || typeof rule.tool !== 'string' || !['allow', 'ask', 'reject', 'delegate'].includes(rule.action))) {
+		throw new Error('user-rules.json must contain an array of permission rules with a tool and valid action.')
 	}
-	try {
-		const parsed = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8')) as Record<string, unknown>
-		const rules = (parsed['amp.permissions'] as Rule[] | undefined) ?? []
-		settingsCache = { mtimeMs, rules }
-		return rules
-	} catch {
-		settingsCache = { mtimeMs, rules: [] }
-		return []
-	}
+	rulesCache = { mtimeMs, rules }
+	return rules
 }
 
 export default function (amp: PluginAPI) {
@@ -123,7 +115,15 @@ export default function (amp: PluginAPI) {
 
 	amp.on('tool.call', async (event, ctx): Promise<ToolCallResult> => {
 		const cmd = shellCommandFromToolCall(amp, event)
-		const decision = classifyPermissionDecision(event.tool, cmd, turnIntents.get(event.thread.id))
+		let decision: Decision
+		try {
+			decision = classifyPermissionDecision(event.tool, cmd, turnIntents.get(event.thread.id))
+		} catch (error) {
+			return {
+				action: 'reject-and-continue',
+				message: `Permission policy could not be evaluated; rejecting ${event.tool}: ${error instanceof Error ? error.message : String(error)}`,
+			}
+		}
 
 		if (decision.action === 'allow') {
 			return { action: 'allow' }
@@ -601,6 +601,7 @@ async function askUser(
 			title: `Approve ${tool}?`,
 			message: reasonLines.join('\n\n'),
 			confirmButtonText: 'Allow',
+			requireHuman: true,
 		}))
 		if (approved) {
 			return { action: 'allow' }
@@ -612,6 +613,7 @@ async function askUser(
 				title: `Why reject ${tool}?`,
 				helpText: 'Optional. This feedback will be returned to the agent so it can adjust its next step.',
 				submitButtonText: 'Reject',
+				requireHuman: true,
 			}))
 		} catch {
 			// If the follow-up input is unavailable, still reject the original

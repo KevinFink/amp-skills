@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { classifyPermissionDecision, decide, findNestedCommand, isUITimeoutError, permissionReasonForCommand, type Rule } from '../plugins/custom-permissions/custom-permissions'
+import { strict as assert } from 'node:assert'
+import type { PluginAPI, ToolCallResult } from '@ampcode/plugin'
+import installPermissions, { classifyPermissionDecision, decide, findNestedCommand, isUITimeoutError, permissionReasonForCommand, type Rule } from '../plugins/custom-permissions/custom-permissions'
 import { stripKnownTitleStatuses } from '../plugins/custom-permissions/thread-title-status'
 import { textNeedsUserAction } from '../plugins/custom-permissions/thread-wait-status'
 import { evaluateShellCommand } from '../plugins/custom-permissions/tighteners'
 
 const repoRoot = resolve(import.meta.dir, '..')
 
-const settings = JSON.parse(readFileSync(resolve(repoRoot, 'settings.json'), 'utf8')) as Record<string, unknown>
-const userRules = (settings['amp.permissions'] as Rule[] | undefined) ?? []
+const userRules = JSON.parse(readFileSync(resolve(repoRoot, 'plugins/custom-permissions/user-rules.json'), 'utf8')) as Rule[]
 const builtinRules = JSON.parse(readFileSync(resolve(repoRoot, 'plugins/custom-permissions/builtin-rules.json'), 'utf8')) as Rule[]
 
 // Mirror the plugin's combined logic: rule cascade + heuristic tighteners.
@@ -43,7 +44,7 @@ interface TestCase {
 }
 
 const cases: TestCase[] = [
-	// User rules from settings.json win over built-in
+	// User rules from user-rules.json win over the baseline
 	{ tool: 'shell_command_status', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'async_shell_command', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
@@ -455,6 +456,46 @@ if (nestedCommand !== 'git status --short') {
 } else {
 	console.log('PASS findNestedCommand :: nested async shell command args')
 }
+
+// Exercise the installed plugin contract, not just the rule interpreter.
+// A migrated plugin must still read the user layer without amp.permissions.
+type ToolHook = (event: { tool: string; input: { command: string }; thread: { id: string } }, ctx: unknown) => Promise<ToolCallResult>
+let toolHook: ToolHook | undefined
+installPermissions({
+	on(name: string, handler: unknown) {
+		if (name === 'tool.call') toolHook = handler as ToolHook
+	},
+	helpers: { shellCommandFromToolCall: () => null },
+	logger: { log() {} },
+} as unknown as PluginAPI)
+assert.ok(toolHook)
+
+const event = (command: string) => ({ tool: 'async_shell_command', input: { command }, thread: { id: 'permission-test' } })
+const context = (approved: boolean) => ({
+	thread: { title: { get: async () => null } },
+	ui: {
+		async confirm(options: { requireHuman?: boolean }) {
+			assert.equal(options.requireHuman, true, 'Permission approval must require a human')
+			return approved
+		},
+		async input(options: { requireHuman?: boolean }) {
+			assert.equal(options.requireHuman, true)
+			return 'Denied in permission regression test'
+		},
+	},
+})
+assert.deepEqual(await toolHook(event('crontab -l'), {}), { action: 'allow' })
+const approvalEvent = event('git worktree remove ../permission-test')
+assert.deepEqual(await toolHook(approvalEvent, context(true)), { action: 'allow' })
+const rejected = await toolHook(approvalEvent, context(false))
+assert.equal(rejected.action, 'reject-and-continue')
+if (rejected.action === 'reject-and-continue') assert.match(rejected.message, /Denied in permission regression test/)
+const unavailable = await toolHook(approvalEvent, {
+	...context(false),
+	ui: { confirm: async () => { throw new Error('UI unavailable') } },
+})
+assert.equal(unavailable.action, 'reject-and-continue')
+console.log('PASS plugin hook :: migrated user rules, async shell approval, human-only denial, unavailable UI rejection')
 
 if (failures > 0) {
 	process.exit(1)
