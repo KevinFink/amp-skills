@@ -237,6 +237,9 @@ function evaluatePython(args: string[], segment: string): TightenerDecision {
 		if (moduleName === 'ruff' && args[2] === 'format') {
 			return { kind: 'allow', reason: 'Python module execution is limited to ruff format.' }
 		}
+		if (moduleName === 'pytest') {
+			return { kind: 'allow', reason: 'Test run via -m pytest, the same as the allowed `pytest` and `uv run pytest`.' }
+		}
 		return { kind: 'ask', reason: `Python module execution (-m ${moduleName ?? '<missing module>'}) can run arbitrary code.` }
 	}
 
@@ -456,6 +459,10 @@ function evaluateGh(args: string[]): TightenerDecision {
 
 	if (GH_READ_ONLY_GROUPS.has(groupOrAction) && action && GH_READ_ONLY_ACTIONS.has(action)) {
 		return { kind: 'allow', reason: `gh ${groupOrAction} ${action} is read-only.` }
+	}
+
+	if (groupOrAction === 'auth' && action === 'status' && !args.some((arg) => arg === '-t' || arg === '--show-token')) {
+		return { kind: 'allow', reason: 'gh auth status only reports login state.' }
 	}
 
 	if (groupOrAction === 'issue' && action === 'edit' && ghIssueEditUsesOnlySafeFlags(args)) {

@@ -1,5 +1,41 @@
 [
   {
+    "tool": "/^(Bash|shell_command)$/",
+    "matches": {
+      "cmd": [
+        "*hunt-data*apply*",
+        "*--confirm-production*",
+        "*prod-db*apply*"
+      ]
+    },
+    "action": "ask"
+  },
+  {
+    "tool": "/^(Bash|shell_command)$/",
+    "matches": {
+      "cmd": [
+        "cut *",
+        "tr *",
+        "diff *",
+        "basename *",
+        "dirname *",
+        "column",
+        "column *",
+        "gh auth status",
+        "gh auth status *",
+        "pytest",
+        "pytest *",
+        "python -m pytest",
+        "python -m pytest *",
+        "python3 -m pytest",
+        "python3 -m pytest *",
+        "npx playwright test",
+        "npx playwright test *"
+      ]
+    },
+    "action": "allow"
+  },
+  {
     "tool": "shell_command_status",
     "action": "allow"
   },

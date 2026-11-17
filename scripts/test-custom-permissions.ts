@@ -360,6 +360,22 @@ const cases: TestCase[] = [
 	{ tool: 'finder', expected: { action: 'allow', source: 'builtin' } },
 	// Unknown tool with no matching rule → default ask
 	{ tool: 'totally_made_up_tool', expected: { action: 'ask', source: 'default' } },
+	// Production writes ask even though the baseline allows `uv *`
+	{ tool: 'shell_command', cmd: 'uv run hunt-data plan --hunt-id H --output plan.json', expected: { action: 'allow', source: 'builtin' }, note: 'uv *' },
+	{ tool: 'shell_command', cmd: 'uv run hunt-data --ecs --profile kevin@fink.com apply --plan plan.json --approve PLAN --confirm-production', expected: { action: 'ask', source: 'user' } },
+	{ tool: 'async_shell_command', cmd: 'cd ~/team-photo-hunt && uv run hunt-data apply --plan plan.json --approve PLAN 2>&1 | tail -20', expected: { action: 'ask', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'bash -lc "uv run hunt-data apply --plan p.json --approve PLAN"', expected: { action: 'ask', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'scripts/prod-db change apply --plan .amp/in/plan.json --approve PLAN --confirm-production', expected: { action: 'ask', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'AWS_PROFILE=x uv run some-tool --confirm-production', expected: { action: 'ask', source: 'user' } },
+	// Read-only text utilities and test runs
+	{ tool: 'shell_command', cmd: 'sed -n 4582,4600p src/app.py | cut -c1-600; rg -n "def parse_hints|def _hints" src/app.py | head', expected: { action: 'allow', source: 'custom' } },
+	{ tool: 'shell_command', cmd: 'git diff --name-only | tr a-z A-Z | column -t', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'diff -u a.txt b.txt; basename src/app.py; dirname src/app.py', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'gh auth status 2>&1 | head -5', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'python3 -m pytest -q tests/test_workflows.py', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'npx playwright test tests/browser/operator-review-stability.spec.js', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'shell_command', cmd: 'python3 -m pytest -q tests/test_workflows.py 2>&1 | tail -5; python3 -m pip install x', expected: { action: 'ask', source: 'builtin' }, note: 'only -m pytest is exempt' },
+	{ tool: 'shell_command', cmd: 'gh auth status --show-token', expected: { action: 'ask', source: 'default' } },
 ]
 
 let failures = 0
