@@ -30,6 +30,10 @@ const GH_READ_ONLY_ACTIONS = new Set(['list', 'view', 'status', 'diff', 'checks'
 const GH_TOP_LEVEL_READ_ONLY_ACTIONS = new Set(['status', 'version', 'help'])
 
 export function evaluateShellCommand(command: string): TightenerDecision {
+	if (/\bPROD_DB_/.test(command) && /(^|[\s/])prod-db(\s|$)/.test(command)) {
+		return { kind: 'ask', reason: 'PROD_DB_* settings can point prod-db at another database, role, or AWS identity.' }
+	}
+
 	const segments = splitShellSegments(command)
 	for (const segment of segments) {
 		const substitutionCheck = checkForCommandSubstitution(segment)
@@ -191,7 +195,49 @@ function evaluateSimpleCommand(tokens: string[], segment: string): TightenerDeci
 		return evaluateLocalPsql(args)
 	}
 
+	if (command === 'prod-db') {
+		return evaluateProdDb(args)
+	}
+
 	return { kind: 'allow', reason: 'Command is not one of the guarded ambiguous shell tools.' }
+}
+
+// team-photo-hunt's scripts/prod-db connects as the SELECT-only role
+// hunt_readonly except for `change apply`. `psql` is excluded because its
+// `\!` and `\o |cmd` run local shell commands.
+function evaluateProdDb(args: string[]): TightenerDecision {
+	const [mode, subcommand] = args
+	if (mode === 'q' || mode === 'tunnel' || mode === '--help' || mode === '-h') {
+		return { kind: 'allow', reason: `prod-db ${mode} is read-only.` }
+	}
+	if (mode === 'change' && (subcommand === 'plan' || subcommand === 'verify')) {
+		return { kind: 'allow', reason: `prod-db change ${subcommand} reads through the read-only role.` }
+	}
+	if (mode === 'query') {
+		// One statement runs inside prod-db's READ ONLY transaction; a second one
+		// (`COMMIT; SET default_transaction_read_only = off; ...`) could leave it
+		// and use PUBLIC's temp-table or large-object rights.
+		const sql = prodDbQuerySql(args.slice(1))
+		if (sql !== undefined && sql.replace(/[;\s]+$/, '').includes(';')) {
+			return { kind: 'ask', reason: 'prod-db query with several SQL statements can leave the read-only transaction.' }
+		}
+		return { kind: 'allow', reason: 'prod-db query runs one statement as the read-only role.' }
+	}
+	return { kind: 'ask', reason: `prod-db ${args.slice(0, 2).join(' ') || '<no command>'} is not a read-only mode.` }
+}
+
+function prodDbQuerySql(args: string[]): string | undefined {
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index]
+		if (arg === '-f' || arg === '--file' || arg === '--output' || arg === '--max-rows') {
+			index += 1
+			continue
+		}
+		if (!arg.startsWith('-')) {
+			return arg
+		}
+	}
+	return undefined
 }
 
 function isLocalPsqlScript(path: string): boolean {

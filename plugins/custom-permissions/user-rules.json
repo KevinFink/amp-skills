@@ -13,6 +13,13 @@
   {
     "tool": "/^(Bash|shell_command)$/",
     "matches": {
+      "cmd": "/^(?:\\.\\/|(?:~|\\/[^\\s]*)\\/team-photo-hunt[^\\s\\/]*\\/)?scripts\\/prod-db (?:q|query|tunnel|change plan|change verify|--help|-h)(?:\\s[\\s\\S]*)?$/"
+    },
+    "action": "allow"
+  },
+  {
+    "tool": "/^(Bash|shell_command)$/",
+    "matches": {
       "cmd": [
         "cut *",
         "tr *",
