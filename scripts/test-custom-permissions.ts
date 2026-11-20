@@ -46,6 +46,7 @@ interface TestCase {
 const cases: TestCase[] = [
 	// User rules from user-rules.json win over the baseline
 	{ tool: 'shell_command_status', expected: { action: 'allow', source: 'user' } },
+	{ tool: 'upload_thread_file', expected: { action: 'allow', source: 'user' } },
 	{ tool: 'Bash', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'async_shell_command', cmd: 'git add foo', expected: { action: 'ask', source: 'default' } },
 	{ tool: 'Bash', cmd: 'git add foo', message: 'commit', expected: { action: 'allow', source: 'custom' } },

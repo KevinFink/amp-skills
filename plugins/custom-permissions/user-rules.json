@@ -1,5 +1,9 @@
 [
   {
+    "tool": "upload_thread_file",
+    "action": "allow"
+  },
+  {
     "tool": "/^(Bash|shell_command)$/",
     "matches": {
       "cmd": [
